@@ -1,4 +1,4 @@
-class MineField:
+class TUIMineField:
 
     OPEN_CELL_0 = 0
     OPEN_CELL_1 = 1
@@ -15,7 +15,7 @@ class MineField:
     def __init__(self, width, height):
         self._width = width
         self._height = height
-        self._field = [MineField.BLANK_CELL for _ in range(width * height)]
+        self._field = [TUIMineField.BLANK_CELL for _ in range(width * height)]
 
     def getCell(self, x, y):
         return self._field[self._flatIndex(x, y)]

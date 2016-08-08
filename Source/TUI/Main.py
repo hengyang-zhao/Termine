@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
 import curses
+from collections import deque
 
 import RC
 
-from MineField import MineField
+from TUIMineField import TUIMineField
+from Shell import Shell
 
 class MineFieldPane:
 
@@ -13,7 +15,6 @@ class MineFieldPane:
         self._mineField = None
 
         self._win = curses.newwin(curses.LINES - 1, width, 0, 0)
-        self._win.border()
 
     def getMaxFieldSize(self):
 
@@ -22,13 +23,31 @@ class MineFieldPane:
 
     def allocateMineField(self, mfWidth, mfHeight):
 
-        self._mineField = MineField(mfWidth, mfHeight)
+        self._mineField = TUIMineField(mfWidth, mfHeight)
 
     def refresh(self):
 
+        self._win.clear()
+        self._win.border()
         self.redrawRulers()
         self.redrawMineField()
         self._win.refresh()
+
+    def retrieveMineFieldCoordinate(self, x, y):
+
+        yMax, xMax = self._win.getmaxyx()
+        mfWidth, mfHeight = self._mineField.getSize()
+
+        xStart = int((xMax - (mfWidth * 4 + 1)) / 2)
+        yStart = int((yMax - (mfHeight * 2 + 1)) / 2)
+
+        xEnd = xStart + mfWidth * 4
+        yEnd = yStart + mfWidth * 2
+
+        if x < xStart or y < yStart or x >= xEnd or y >= yEnd or (x - xStart) % 4 == 0 or (y - yStart) % 2 == 0:
+            return None
+
+        return (x - xStart) // 4, (y - yStart) // 2
 
     def redrawRulers(self):
 
@@ -48,6 +67,20 @@ class MineFieldPane:
         for y in range(mfHeight):
             self._win.addstr(yStart + 2 * y + 1, xStart - 1 - len(str(y)), str(y))
             self._win.addstr(yStart + 2 * y + 1, xStart + mfWidth * 4 + 2, str(y))
+
+    def update(self, shell):
+        xMax, yMax = self._mineField.getSize()
+        for x in range(xMax):
+            for y in range(yMax):
+                shell.run("peek %d %d" % (x, y))
+
+                answer = shell.getOutput()[0]
+                if answer == "flagged":
+                    self._mineField.setCell(x, y, TUIMineField.FLAG_CELL)
+                elif answer == "unexplored":
+                    self._mineField.setCell(x, y, TUIMineField.BLANK_CELL)
+                else:
+                    self._mineField.setCell(x, y, int(answer))
 
     def redrawMineField(self):
 
@@ -78,27 +111,27 @@ class MineFieldPane:
                 c = self._mineField.getCell(cellX, cellY)
                 s = None
 
-                if c == MineField.OPEN_CELL_0:
+                if c == TUIMineField.OPEN_CELL_0:
                     s = '0'
-                elif c == MineField.OPEN_CELL_1:
+                elif c == TUIMineField.OPEN_CELL_1:
                     s = '1'
-                elif c == MineField.OPEN_CELL_2:
+                elif c == TUIMineField.OPEN_CELL_2:
                     s = '2'
-                elif c == MineField.OPEN_CELL_3:
+                elif c == TUIMineField.OPEN_CELL_3:
                     s = '3'
-                elif c == MineField.OPEN_CELL_4:
+                elif c == TUIMineField.OPEN_CELL_4:
                     s = '4'
-                elif c == MineField.OPEN_CELL_5:
+                elif c == TUIMineField.OPEN_CELL_5:
                     s = '5'
-                elif c == MineField.OPEN_CELL_6:
+                elif c == TUIMineField.OPEN_CELL_6:
                     s = '6'
-                elif c == MineField.OPEN_CELL_7:
+                elif c == TUIMineField.OPEN_CELL_7:
                     s = '7'
-                elif c == MineField.OPEN_CELL_8:
+                elif c == TUIMineField.OPEN_CELL_8:
                     s = '8'
-                elif c == MineField.FLAG_CELL:
+                elif c == TUIMineField.FLAG_CELL:
                     s = 'F'
-                elif c == MineField.BLANK_CELL:
+                elif c == TUIMineField.BLANK_CELL:
                     s = ' '
                 else:
                     pass # XXX: raise an exception!
@@ -110,11 +143,34 @@ class LogPane:
     def __init__(self, stdscr, width):
 
         self._win = curses.newwin(curses.LINES - 1, width, 0, curses.COLS - width)
+        self._logLines = deque()
 
-        self._win.border()
+    def push(self, s):
+
+        self._logLines.append(s)
+
+    def printLog(self):
+
+        while len(self._logLines) > self._maxLines():
+            self._logLines.popleft()
+
+        y, x = self._win.getyx()
+        for line in self._logLines:
+            self._win.addstr(y + 1, x + 1, line)
+            y += 1
 
     def refresh(self):
+
+        self._win.clear()
+
+        self.printLog()
+
+        self._win.border()
         self._win.refresh()
+
+    def _maxLines(self):
+        yMax, xMax = self._win.getmaxyx()
+        return yMax - 2
 
 class BottomPane:
 
@@ -127,30 +183,42 @@ class BottomPane:
 
 def Main(stdscr):
     stdscr.clear()
+    curses.mousemask(1)
 
     mineFieldPane = MineFieldPane(stdscr, curses.COLS - RC.LOG_WINDOW_WIDTH)
     logPane = LogPane(stdscr, RC.LOG_WINDOW_WIDTH)
     bottomPane = BottomPane(stdscr)
+    shell = Shell()
 
     mfWidth, mfHeight = mineFieldPane.getMaxFieldSize()
     if mfWidth >= 30 and mfHeight >= 16:
         mineFieldPane.allocateMineField(30, 16)
+        shell.run("minefield %d %d %d" % (30, 16, 100))
     else:
         mineFieldPane.allocateMineField(mfWidth, mfHeight)
+        shell.run("minefield %d %d %d" % (mfWidth, mfHeight, mfWidth * mfHeight // 10))
 
     stdscr.refresh()
     mineFieldPane.refresh()
     logPane.refresh()
     bottomPane.refresh()
 
-    stdscr.getkey()
-    mineFieldPane._mineField.setCell(10, 2, MineField.OPEN_CELL_6)
+    while True:
+        event = stdscr.getch()
 
-    stdscr.refresh()
-    mineFieldPane.refresh()
-    logPane.refresh()
-    bottomPane.refresh()
+        if event == curses.KEY_MOUSE:
+            _, mx, my, _, _ = curses.getmouse()
+            coor = mineFieldPane.retrieveMineFieldCoordinate(mx, my)
 
-    stdscr.getkey()
+            if coor is not None:
+                x, y = coor
+                logPane.push("poke %d %d" % (x, y))
+                shell.run("poke %d %d" % (x, y))
+                mineFieldPane.update(shell)
+
+        stdscr.refresh()
+        mineFieldPane.refresh()
+        logPane.refresh()
+        bottomPane.refresh()
 
 curses.wrapper(Main)
