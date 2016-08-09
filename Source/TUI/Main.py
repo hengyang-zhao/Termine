@@ -183,7 +183,7 @@ class BottomPane:
 
 def Main(stdscr):
     stdscr.clear()
-    curses.mousemask(1)
+    curses.mousemask(curses.BUTTON1_CLICKED | curses.BUTTON3_CLICKED)
 
     mineFieldPane = MineFieldPane(stdscr, curses.COLS - RC.LOG_WINDOW_WIDTH)
     logPane = LogPane(stdscr, RC.LOG_WINDOW_WIDTH)
@@ -207,14 +207,29 @@ def Main(stdscr):
         event = stdscr.getch()
 
         if event == curses.KEY_MOUSE:
-            _, mx, my, _, _ = curses.getmouse()
+            mouseEvent = curses.getmouse()
+            _, mx, my, _, btn = mouseEvent
             coor = mineFieldPane.retrieveMineFieldCoordinate(mx, my)
+            logPane.push(str(mouseEvent))
 
-            if coor is not None:
+            if coor is None:
+                continue
+
+            if btn == curses.BUTTON1_CLICKED:
                 x, y = coor
                 logPane.push("poke %d %d" % (x, y))
                 shell.run("poke %d %d" % (x, y))
-                mineFieldPane.update(shell)
+            elif btn == curses.BUTTON3_CLICKED:
+                x, y = coor
+                logPane.push("flag %d %d" % (x, y))
+                shell.run("flag %d %d" % (x, y))
+            else:
+                logPane.push("btn == %d" % btn)
+                logPane.push("BUTTON1_CLICKED == %d" % curses.BUTTON1_CLICKED)
+                logPane.push("BUTTON3_CLICKED == %d" % curses.BUTTON3_CLICKED)
+                pass
+
+        mineFieldPane.update(shell)
 
         stdscr.refresh()
         mineFieldPane.refresh()

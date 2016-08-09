@@ -80,12 +80,12 @@ class MineField:
                 yield (xx, yy)
 
     def getFlaggedXYs(self, x, y):
-        for xx, yy in self.getSurroundingXYs():
+        for xx, yy in self.getSurroundingXYs(x, y):
             if self.isFlagged(xx, yy):
                 yield (xx, yy)
 
     def getUnrevealedXYs(self, x, y):
-        for xx, yy in self.getSurroundingXYs():
+        for xx, yy in self.getSurroundingXYs(x, y):
             if not self.isFlagged(xx, yy) and not self.isRevealed(xx, yy):
                 yield (xx, yy)
 
