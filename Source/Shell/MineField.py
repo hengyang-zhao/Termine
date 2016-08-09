@@ -53,11 +53,25 @@ class MineField:
         for x, y in self._mines:
             yield x, y
 
+    def getFlags(self):
+        for x, y in self._flagged:
+            yield x, y
+
+    def getFalseFlags(self):
+        for x, y in set(self.getFlags).difference(set(self.getMines())):
+            yield x, y
+
     def getMinesCount(self):
         return len(self._mines)
 
     def getFlagsCount(self):
         return len(self._flagged)
+
+    def getUnexplored(self):
+        for x in range(self._width):
+            for y in range(self._height):
+                if (x, y) not in self._flagged and (x, y) not in self._revealed:
+                    yield x, y
 
     def isFinished(self):
         return len(self._revealed) + len(self._mines) == self._width * self._height
