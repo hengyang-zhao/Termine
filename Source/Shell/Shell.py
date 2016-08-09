@@ -10,6 +10,7 @@ class Shell:
 
         self._mineField = None
         self._minesCount = None
+        self._isBoomed = False
         self._output = []
 
     def getOutput(self):
@@ -48,6 +49,12 @@ class Shell:
             self._doUnflag(args)
             return
 
+        args = self._parseToggleFlag(cmd)
+        if args is not None:
+
+            self._doToggleFlag(args)
+            return
+
         args = self._parseQuery(cmd)
         if args is not None:
 
@@ -69,6 +76,19 @@ class Shell:
 
     def _parsePoke(self, cmd):
         m = re.match(r"^\s*poke\s+(\d+)\s+(\d+)\s*$", cmd)
+
+        if m:
+            args = {}
+            args['x'] = int(m.group(1))
+            args['y'] = int(m.group(2))
+
+            return args
+
+        else:
+            return None
+
+    def _parseToggleFlag(self, cmd):
+        m = re.match(r"^\s*toggle\s+(\d+)\s+(\d+)\s*$", cmd)
 
         if m:
             args = {}
@@ -134,18 +154,28 @@ class Shell:
 
         self._mineField = MineField(args['width'], args['height'])
         self._minesCount = args['mines']
+        self._isBoomed = False
+        self._boomedMines = []
 
         self._output.append("created minefield %(width)d x %(height)d with %(mines)d mines" % args)
 
-    def _checkMineField(self):
+    def _hasValidMineField(self):
         if self._mineField is None:
             self._output.append("no minefield")
             return False
 
         return True
 
+    def _notYetBoomed(self):
+
+        if self._isBoomed is True:
+            self._output.append("boomed minefield")
+            return False
+
+        return True
+
     def _doFlag(self, args):
-        if self._checkMineField() is False:
+        if self._hasValidMineField() is False or self._notYetBoomed() is False:
             return
 
         x, y = args['x'], args['y']
@@ -158,8 +188,23 @@ class Shell:
         self._mineField.flag(x, y)
         self._output.append('%d %d flagged' % (x, y))
 
+    def _doToggleFlag(self, args):
+        if self._hasValidMineField() is False or self._notYetBoomed() is False:
+            return
+
+        x, y = args['x'], args['y']
+        if self._mineField.isRevealed(x, y):
+            return
+
+        if self._mineField.isFlagged(x, y):
+            self._mineField.unflag(x, y)
+            self._output.append('%d %d unflagged' % (x, y))
+        else:
+            self._mineField.flag(x, y)
+            self._output.append('%d %d flagged' % (x, y))
+
     def _doUnflag(self, args):
-        if self._checkMineField() is False:
+        if self._hasValidMineField() is False or self._notYetBoomed() is False:
             return
 
         x, y = args['x'], args['y']
@@ -174,7 +219,7 @@ class Shell:
 
     def _doQuery(self, args):
 
-        if self._checkMineField() is False:
+        if self._hasValidMineField() is False:
             return
 
         query = args['query']
@@ -190,12 +235,23 @@ class Shell:
             self._output.append("%d" % height)
         elif query == 'success':
             self._output.append("yes" if self._mineField.isFinished() else "no")
+        elif query == 'boomed':
+            self._output.append("yes" if self._isBoomed else "no")
+        elif query == 'boomedlist':
+            for x, y in self._boomedMines:
+                self._output.append("%d %d" % (x, y))
+        elif query == 'mineslist':
+            if not self._isBoomed:
+                self._output.append("secret")
+            else:
+                for x, y in self._mineField.getMines():
+                    self._output.append("%d %d" % (x, y))
         else:
             self._output.append("null")
 
     def _doPoke(self, args):
 
-        if self._checkMineField() is False:
+        if self._hasValidMineField() is False or self._notYetBoomed() is False:
             return
 
         x, y = args['x'], args['y']
@@ -242,7 +298,9 @@ class Shell:
         if len(boomedXYs) is not 0:
             for xx, yy in boomedXYs:
                 self._output.append('%d %d boomed' % (xx, yy))
+                self._boomedMines.append((xx, yy))
 
+            self._isBoomed = True
             return
 
         # Poke those cells with digit 0
@@ -274,7 +332,7 @@ class Shell:
 
     def _doPeek(self, args):
 
-        if self._checkMineField() is False:
+        if self._hasValidMineField() is False:
             return
 
         x, y = args['x'], args['y']

@@ -219,10 +219,14 @@ def Main(stdscr):
                 x, y = coor
                 logPane.push("poke %d %d" % (x, y))
                 shell.run("poke %d %d" % (x, y))
+                for line in shell.getOutput():
+                    logPane.push(line)
             elif btn == curses.BUTTON3_CLICKED:
                 x, y = coor
-                logPane.push("flag %d %d" % (x, y))
-                shell.run("flag %d %d" % (x, y))
+                logPane.push("toggle %d %d" % (x, y))
+                shell.run("toggle %d %d" % (x, y))
+                for line in shell.getOutput():
+                    logPane.push(line)
             else:
                 logPane.push("btn == %d" % btn)
                 logPane.push("BUTTON1_CLICKED == %d" % curses.BUTTON1_CLICKED)

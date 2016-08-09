@@ -49,6 +49,10 @@ class MineField:
 
         return ret
 
+    def getMines(self):
+        for x, y in self._mines:
+            yield x, y
+
     def getMinesCount(self):
         return len(self._mines)
 
