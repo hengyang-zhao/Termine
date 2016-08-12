@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import curses
 from collections import deque
@@ -10,11 +10,36 @@ from Shell import Shell
 
 class MineFieldPane:
 
+    CELL_0_COLOR_ID = 0
+    CELL_1_COLOR_ID = 1
+    CELL_2_COLOR_ID = 2
+    CELL_3_COLOR_ID = 3
+    CELL_4_COLOR_ID = 4
+    CELL_5_COLOR_ID = 5
+    CELL_6_COLOR_ID = 6
+    CELL_7_COLOR_ID = 7
+    CELL_8_COLOR_ID = 8
+    CELL_FLAG_COLOR_ID = 9
+    CELL_BLANK_COLOR_ID = 10
+
     def __init__(self, stdscr, width):
 
         self._mineField = None
 
+        self._styles = {}
         self._win = curses.newwin(curses.LINES - 1, width, 0, 0)
+
+        self._styles[MineFieldPane.CELL_0_COLOR_ID] = 0;
+        self._styles[MineFieldPane.CELL_1_COLOR_ID] = 0;
+        self._styles[MineFieldPane.CELL_2_COLOR_ID] = 0;
+        self._styles[MineFieldPane.CELL_3_COLOR_ID] = 0;
+        self._styles[MineFieldPane.CELL_4_COLOR_ID] = 0;
+        self._styles[MineFieldPane.CELL_5_COLOR_ID] = 0;
+        self._styles[MineFieldPane.CELL_6_COLOR_ID] = 0;
+        self._styles[MineFieldPane.CELL_7_COLOR_ID] = 0;
+        self._styles[MineFieldPane.CELL_8_COLOR_ID] = 0;
+        self._styles[MineFieldPane.CELL_FLAG_COLOR_ID] = curses.A_REVERSE;
+        self._styles[MineFieldPane.CELL_BLANK_COLOR_ID] = curses.A_REVERSE;
 
     def getMaxFieldSize(self):
 
@@ -27,7 +52,7 @@ class MineFieldPane:
 
     def refresh(self):
 
-        self._win.clear()
+        self._win.erase()
         self._win.border()
         self.redrawRulers()
         self.redrawMineField()
@@ -109,34 +134,46 @@ class MineFieldPane:
                 self._win.addstr(yStart + cellY * 2 + 2, xStart + cellX * 4 + 4, '+')
 
                 c = self._mineField.getCell(cellX, cellY)
-                s = None
+                txt = None
+                style = None
 
                 if c == TUIMineField.OPEN_CELL_0:
-                    s = '0'
+                    txt = RC.CELL_0_TEXT
+                    style = curses.color_pair(MineFieldPane.CELL_0_COLOR_ID) | self._styles[MineFieldPane.CELL_0_COLOR_ID]
                 elif c == TUIMineField.OPEN_CELL_1:
-                    s = '1'
+                    txt = RC.CELL_1_TEXT
+                    style = curses.color_pair(MineFieldPane.CELL_1_COLOR_ID) | self._styles[MineFieldPane.CELL_1_COLOR_ID]
                 elif c == TUIMineField.OPEN_CELL_2:
-                    s = '2'
+                    txt = RC.CELL_2_TEXT
+                    style = curses.color_pair(MineFieldPane.CELL_2_COLOR_ID) | self._styles[MineFieldPane.CELL_2_COLOR_ID]
                 elif c == TUIMineField.OPEN_CELL_3:
-                    s = '3'
+                    txt = RC.CELL_3_TEXT
+                    style = curses.color_pair(MineFieldPane.CELL_3_COLOR_ID) | self._styles[MineFieldPane.CELL_3_COLOR_ID]
                 elif c == TUIMineField.OPEN_CELL_4:
-                    s = '4'
+                    txt = RC.CELL_4_TEXT
+                    style = curses.color_pair(MineFieldPane.CELL_4_COLOR_ID) | self._styles[MineFieldPane.CELL_4_COLOR_ID]
                 elif c == TUIMineField.OPEN_CELL_5:
-                    s = '5'
+                    txt = RC.CELL_5_TEXT
+                    style = curses.color_pair(MineFieldPane.CELL_5_COLOR_ID) | self._styles[MineFieldPane.CELL_5_COLOR_ID]
                 elif c == TUIMineField.OPEN_CELL_6:
-                    s = '6'
+                    txt = RC.CELL_6_TEXT
+                    style = curses.color_pair(MineFieldPane.CELL_6_COLOR_ID) | self._styles[MineFieldPane.CELL_6_COLOR_ID]
                 elif c == TUIMineField.OPEN_CELL_7:
-                    s = '7'
+                    txt = RC.CELL_7_TEXT
+                    style = curses.color_pair(MineFieldPane.CELL_7_COLOR_ID) | self._styles[MineFieldPane.CELL_7_COLOR_ID]
                 elif c == TUIMineField.OPEN_CELL_8:
-                    s = '8'
+                    txt = RC.CELL_8_TEXT
+                    style = curses.color_pair(MineFieldPane.CELL_8_COLOR_ID) | self._styles[MineFieldPane.CELL_8_COLOR_ID]
                 elif c == TUIMineField.FLAG_CELL:
-                    s = 'F'
+                    txt = RC.CELL_FLAG_TEXT
+                    style = curses.color_pair(MineFieldPane.CELL_FLAG_COLOR_ID) | self._styles[MineFieldPane.CELL_FLAG_COLOR_ID]
                 elif c == TUIMineField.BLANK_CELL:
-                    s = ' '
+                    txt = RC.CELL_BLANK_TEXT
+                    style = curses.color_pair(MineFieldPane.CELL_BLANK_COLOR_ID) | self._styles[MineFieldPane.CELL_BLANK_COLOR_ID]
                 else:
                     pass # XXX: raise an exception!
 
-                self._win.addstr(yStart + cellY * 2 + 1, xStart + cellX * 4 + 2, s)
+                self._win.addstr(yStart + cellY * 2 + 1, xStart + cellX * 4 + 1, txt, style)
 
 class LogPane:
 
@@ -161,7 +198,7 @@ class LogPane:
 
     def refresh(self):
 
-        self._win.clear()
+        self._win.erase()
 
         self.printLog()
 
@@ -182,8 +219,26 @@ class BottomPane:
         self._win.refresh()
 
 def Main(stdscr):
+    if (curses.has_colors()):
+        curses.start_color()
+        curses.use_default_colors()
+
+        curses.init_pair(MineFieldPane.CELL_0_COLOR_ID, curses.COLOR_WHITE, curses.COLOR_BLACK);
+        curses.init_pair(MineFieldPane.CELL_1_COLOR_ID, curses.COLOR_BLUE, curses.COLOR_BLACK);
+        curses.init_pair(MineFieldPane.CELL_2_COLOR_ID, curses.COLOR_GREEN, curses.COLOR_BLACK);
+        curses.init_pair(MineFieldPane.CELL_3_COLOR_ID, curses.COLOR_RED, curses.COLOR_BLACK);
+        curses.init_pair(MineFieldPane.CELL_4_COLOR_ID, curses.COLOR_MAGENTA, curses.COLOR_BLACK);
+        curses.init_pair(MineFieldPane.CELL_5_COLOR_ID, curses.COLOR_RED, curses.COLOR_BLACK);
+        curses.init_pair(MineFieldPane.CELL_6_COLOR_ID, curses.COLOR_BLUE, curses.COLOR_BLACK);
+        curses.init_pair(MineFieldPane.CELL_7_COLOR_ID, curses.COLOR_WHITE, curses.COLOR_BLACK);
+        curses.init_pair(MineFieldPane.CELL_8_COLOR_ID, curses.COLOR_WHITE, curses.COLOR_BLACK);
+        curses.init_pair(MineFieldPane.CELL_FLAG_COLOR_ID, curses.COLOR_RED, curses.COLOR_WHITE);
+        curses.init_pair(MineFieldPane.CELL_BLANK_COLOR_ID, curses.COLOR_WHITE, curses.COLOR_WHITE);
+
     stdscr.clear()
-    curses.mousemask(curses.BUTTON1_CLICKED | curses.BUTTON3_CLICKED)
+    curses.mousemask(curses.BUTTON1_PRESSED | curses.BUTTON3_PRESSED)
+    
+    curses.mouseinterval(0)
 
     mineFieldPane = MineFieldPane(stdscr, curses.COLS - RC.LOG_WINDOW_WIDTH)
     logPane = LogPane(stdscr, RC.LOG_WINDOW_WIDTH)
@@ -215,22 +270,19 @@ def Main(stdscr):
             if coor is None:
                 continue
 
-            if btn == curses.BUTTON1_CLICKED:
+            if btn == curses.BUTTON1_PRESSED:
                 x, y = coor
                 logPane.push("poke %d %d" % (x, y))
                 shell.run("poke %d %d" % (x, y))
                 for line in shell.getOutput():
                     logPane.push(line)
-            elif btn == curses.BUTTON3_CLICKED:
+            elif btn == curses.BUTTON3_PRESSED:
                 x, y = coor
                 logPane.push("toggle %d %d" % (x, y))
                 shell.run("toggle %d %d" % (x, y))
                 for line in shell.getOutput():
                     logPane.push(line)
             else:
-                logPane.push("btn == %d" % btn)
-                logPane.push("BUTTON1_CLICKED == %d" % curses.BUTTON1_CLICKED)
-                logPane.push("BUTTON3_CLICKED == %d" % curses.BUTTON3_CLICKED)
                 pass
 
         mineFieldPane.update(shell)
