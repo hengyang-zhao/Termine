@@ -52,9 +52,9 @@ CELL_DIGIT_8    = StyledText(' 8 ', curses.A_BOLD, 'white')
 CELL_FLAGGED    = StyledText(' $ ', curses.A_REVERSE | curses.A_BOLD, 'white')
 CELL_UNEXPLORED = StyledText('   ', curses.A_REVERSE | curses.A_DIM)
 
-CELL_WRONG          = StyledText('!X!', curses.A_REVERSE | curses.A_BOLD, 'yellow')
+CELL_WRONG          = StyledText('!X!', curses.A_REVERSE | curses.A_BOLD, 'red')
 CELL_UNFLAGGED_MINE = StyledText(' * ', curses.A_REVERSE)
-CELL_BOOMED         = StyledText('BM!', curses.A_REVERSE | curses.A_BOLD, 'red')
+CELL_BOOMED         = StyledText('BM!', curses.A_REVERSE | curses.A_BOLD, 'yellow')
 
 MINE_FIELD_CELL_CHEIGHT = 1
 MINE_FIELD_CELL_CWIDTH  = 3
