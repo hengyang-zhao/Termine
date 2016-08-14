@@ -77,6 +77,7 @@ MINE_FIELD_DEFAULT_MINES_PERCENTAGE = 0.16
 
 BUTTON_NEW_GAME = StyledText(' New Game ', curses.A_REVERSE, 'white')
 BUTTON_PAUSE    = StyledText('  PAUSE  ', curses.A_REVERSE, 'white')
+BUTTON_RESUME   = StyledText(' UNPAUSE ', curses.A_REVERSE, 'white')
 BUTTON_RECORDS  = StyledText(' RECORDS ', curses.A_REVERSE, 'white')
 
 TIMER = StyledText(' %s ', curses.A_REVERSE, 'white')

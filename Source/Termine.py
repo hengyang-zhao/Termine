@@ -119,7 +119,7 @@ class MineFieldWindow:
             self._win.addch(yCStart + mfY * (RC.MINE_FIELD_CELL_CHEIGHT + 1) + y, xCStart + (mfX + 1) * (RC.MINE_FIELD_CELL_CWIDTH + 1), curses.ACS_VLINE, borderStyle)
 
 
-        if TIMER.isPaused() and not self.isBoomed():
+        if TIMER.isPaused() and not self.isBoomed() and not self.isFinished():
             cell = RC.CELL_PAUSED
         else:
             cell = self.cellAt(mfX, mfY)
@@ -208,7 +208,16 @@ class StatusWindow:
 
     def __init__(self, width):
         self._win = curses.newwin(1, width, curses.LINES - 1, 0)
-        self._buttons = OrderedDict({
+
+    def _buttons(self):
+        if TIMER.isPaused() and not MINE_FIELD_WINDOW.isFinished() and not MINE_FIELD_WINDOW.isBoomed():
+            return OrderedDict({
+                StatusWindow.BUTTON_NEW_GAME: RC.BUTTON_NEW_GAME,
+                StatusWindow.BUTTON_PAUSE: RC.BUTTON_RESUME,
+                StatusWindow.BUTTON_RECORDS: RC.BUTTON_RECORDS
+                })
+        else:
+            return OrderedDict({
                 StatusWindow.BUTTON_NEW_GAME: RC.BUTTON_NEW_GAME,
                 StatusWindow.BUTTON_PAUSE: RC.BUTTON_PAUSE,
                 StatusWindow.BUTTON_RECORDS: RC.BUTTON_RECORDS
@@ -252,7 +261,7 @@ class StatusWindow:
     def drawButtons(self):
         cStart = 0
 
-        for btn in self._buttons.values():
+        for btn in self._buttons().values():
             self._win.addstr(0, cStart, btn.text(), btn.attr())
             cStart += 1 + len(btn.text())
 
@@ -261,7 +270,7 @@ class StatusWindow:
             return None
 
         cStart = 0
-        for k, btn in self._buttons.items():
+        for k, btn in self._buttons().items():
 
             if cX >= cStart and cX < cStart + len(btn.text()):
                 return k
