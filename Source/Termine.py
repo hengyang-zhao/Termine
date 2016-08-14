@@ -2,6 +2,9 @@
 
 import curses
 import datetime
+import threading
+import time
+
 from collections import deque
 from collections import OrderedDict
 
@@ -12,13 +15,13 @@ MINE_FIELD_WINDOW = None
 STATUS_WINDOW = None
 LOG_WINDOW = None
 SHELL = None
+ROOT_SCREEN = None
 
 class MineFieldWindow:
 
-    def __init__(self, screen, width, shell):
+    def __init__(self, width):
 
         self._win = curses.newwin(curses.LINES - 1, width, 0, 0)
-        self._shell = shell
 
     def getMaxMineFieldSize(self):
 
@@ -121,26 +124,26 @@ class MineFieldWindow:
 
     def currentMineFieldSize(self):
 
-        self._shell.run("query width")
-        mfWidth = int(next(self._shell.getOutput()))
+        SHELL.run("query width")
+        mfWidth = int(next(SHELL.getOutput()))
 
-        self._shell.run("query height")
-        mfHeight = int(next(self._shell.getOutput()))
+        SHELL.run("query height")
+        mfHeight = int(next(SHELL.getOutput()))
 
         return mfWidth, mfHeight
 
     def isBoomed(self):
-        self._shell.run('query boomed')
-        return next(self._shell.getOutput()) == 'yes'
+        SHELL.run('query boomed')
+        return next(SHELL.getOutput()) == 'yes'
 
     def isFinished(self):
-        self._shell.run('query success')
-        return next(self._shell.getOutput()) == 'yes'
+        SHELL.run('query success')
+        return next(SHELL.getOutput()) == 'yes'
 
     def cellAt(self, mfX, mfY):
 
-        self._shell.run("peek %d %d" % (mfX, mfY))
-        cell = next(self._shell.getOutput())
+        SHELL.run("peek %d %d" % (mfX, mfY))
+        cell = next(SHELL.getOutput())
 
         if cell == '0':
             return RC.CELL_DIGIT_NONE
@@ -199,7 +202,7 @@ class StatusWindow:
     BUTTON_PAUSE = 1
     BUTTON_RECORDS = 2
 
-    def __init__(self, screen, width, shell):
+    def __init__(self, width):
         self._win = curses.newwin(1, width, curses.LINES - 1, 0)
         self._startTime = None
         self._elapsedTime = None
@@ -208,8 +211,6 @@ class StatusWindow:
                 StatusWindow.BUTTON_PAUSE: RC.BUTTON_PAUSE,
                 StatusWindow.BUTTON_RECORDS: RC.BUTTON_RECORDS
                 })
-
-        self._shell = shell
 
     def isTimerReset(self):
         return self._startTime is None and self._elapsedTime is None
@@ -245,18 +246,21 @@ class StatusWindow:
         return "%02d:%02d.%01d" % (nmins, nsecs, ntenth)
 
     def progressString(self):
-        self._shell.run("query flags")
-        nFlags = next(self._shell.getOutput())
-        self._shell.run("query mines")
-        nMines = next(self._shell.getOutput())
+        SHELL.run("query flags")
+        nFlags = next(SHELL.getOutput())
+        SHELL.run("query mines")
+        nMines = next(SHELL.getOutput())
 
         return "%s flags / %s mines" % (nFlags, nMines)
 
-    def drawStatus(self):
+    def drawStatus(self, clockOnly=False):
         _, cWidth = self._win.getmaxyx()
 
         timeStr = RC.TIMER.text() % self.clockString()
         self._win.addstr(0, cWidth - len(timeStr) - 1, timeStr, RC.TIMER.attr())
+
+        if clockOnly is True: return
+
         cWidth -= len(timeStr) + 1
 
         progStr = RC.MINES_REMAINING.text() % self.progressString()
@@ -282,6 +286,10 @@ class StatusWindow:
 
         return None
 
+    def updateClock(self):
+        self.drawStatus(clockOnly=True)
+        self._win.noutrefresh()
+
     def updateAll(self):
         self.drawButtons()
         self.drawStatus()
@@ -289,10 +297,9 @@ class StatusWindow:
 
 class LogWindow:
 
-    def __init__(self, screen, width, shell):
+    def __init__(self, width):
 
         self._win = curses.newwin(curses.LINES, width, 0, curses.COLS - width)
-        self._shell = shell
         self._logLines = deque()
 
     def push(self, s):
@@ -322,9 +329,6 @@ class LogWindow:
         return cHeight - RC.LOG_BORDER_CHEIGHT * 2
 
 class EventLoop:
-
-    def __init__(self, screen):
-        self._screen = screen
 
     def mineFieldOnMouseClick(self, mX, mY, btn):
 
@@ -381,7 +385,7 @@ class EventLoop:
 
         while True:
 
-            event = self._screen.getch()
+            event = ROOT_SCREEN.getch()
 
             if event == curses.KEY_MOUSE:
                 mouseEvent = curses.getmouse()
@@ -430,25 +434,39 @@ def RestartGame():
     SHELL.run(shellCmd)
     STATUS_WINDOW.resetTimer()
 
+class ClockUpdater(threading.Thread):
+
+    def run(self):
+        while True:
+            STATUS_WINDOW.updateClock()
+            curses.doupdate()
+            time.sleep(0.1)
+
 def Main(stdscr):
 
     global MINE_FIELD_WINDOW
     global STATUS_WINDOW
     global LOG_WINDOW
+    global ROOT_SCREEN
     global SHELL
 
     InitCurses()
     stdscr.clear()
 
     SHELL = Shell.Shell()
-    MINE_FIELD_WINDOW = MineFieldWindow(stdscr, curses.COLS - RC.LOG_WINDOW_WIDTH, SHELL)
-    STATUS_WINDOW = StatusWindow(stdscr, curses.COLS - RC.LOG_WINDOW_WIDTH, SHELL)
-    LOG_WINDOW = LogWindow(stdscr, RC.LOG_WINDOW_WIDTH, SHELL)
+    ROOT_SCREEN = stdscr
+    MINE_FIELD_WINDOW = MineFieldWindow(curses.COLS - RC.LOG_WINDOW_WIDTH)
+    STATUS_WINDOW = StatusWindow(curses.COLS - RC.LOG_WINDOW_WIDTH)
+    LOG_WINDOW = LogWindow(RC.LOG_WINDOW_WIDTH)
 
     RestartGame()
 
+    clockUpdater = ClockUpdater()
+    clockUpdater.daemon = True
+    clockUpdater.start()
+
     stdscr.refresh()
     refreshAll()
-    EventLoop(stdscr).run()
+    EventLoop().run()
 
 curses.wrapper(Main)
