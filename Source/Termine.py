@@ -432,7 +432,10 @@ class EventLoop:
             event = ROOT_SCREEN.getch()
 
             if event == curses.KEY_MOUSE:
-                mouseEvent = curses.getmouse()
+                try:
+                    mouseEvent = curses.getmouse()
+                except:
+                    continue
                 _, mX, mY, _, btn = mouseEvent
 
                 self.mineFieldOnMouseClick(mX, mY, btn)
