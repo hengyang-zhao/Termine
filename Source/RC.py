@@ -18,18 +18,26 @@ def cursesColor(colorStr):
     }
     return curses.color_pair(colorDict[colorStr])
 
+class Style:
+
+    def __init__(self, style=None, color=None):
+        self._style = 0 if style is None else style
+        self._color = color
+
+    def attr(self):
+        return self._style | cursesColor(self._color)
+
 class StyledText:
 
     def __init__(self, text, style=None, color=None):
         self._text = text
-        self._style = 0 if style is None else style
-        self._color = color
+        self._style = Style(style, color)
 
     def text(self):
         return self._text
 
     def attr(self):
-        return self._style | cursesColor(self._color)
+        return self._style.attr()
 
 CELL_DIGIT_NONE = StyledText('   ', 0)
 CELL_DIGIT_1    = StyledText(' 1 ', curses.A_BOLD, 'blue')
@@ -56,6 +64,9 @@ MINE_FIELD_MARGIN_CWIDTH = 1
 
 MINE_FIELD_BORDER_CHEIGHT = 1
 MINE_FIELD_BORDER_CWIDTH = 1
+MINE_FIELD_BORDER_DEFAULT_STYLE = Style()
+MINE_FIELD_BORDER_BOOMED_STYLE = Style(curses.A_DIM, 'red')
+MINE_FIELD_BORDER_FINISHED_STYLE = Style(curses.A_DIM, 'green')
 
 MINE_FIELD_HEIGHT = 16
 MINE_FIELD_WIDTH = 30
@@ -67,6 +78,7 @@ BUTTON_PAUSE    = StyledText('  PAUSE  ', curses.A_REVERSE, 'white')
 BUTTON_RECORDS  = StyledText(' RECORDS ', curses.A_REVERSE, 'white')
 
 TIMER = StyledText(' %s ', curses.A_REVERSE, 'white')
+MINES_REMAINING = StyledText(' %s ', curses.A_REVERSE, 'white')
 
 SIDE_PANE_WIDTH = 32
 SHELL_COMMAND_STYLE = 0

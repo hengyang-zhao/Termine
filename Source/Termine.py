@@ -96,18 +96,25 @@ class MineFieldWindow:
         else:
             lrCorner = curses.ACS_PLUS
 
-        self._win.addch(yCStart + mfY * (RC.MINE_FIELD_CELL_CHEIGHT + 1), xCStart + mfX * (RC.MINE_FIELD_CELL_CWIDTH + 1), ulCorner)
-        self._win.addch(yCStart + mfY * (RC.MINE_FIELD_CELL_CHEIGHT + 1), xCStart + (mfX + 1) * (RC.MINE_FIELD_CELL_CWIDTH + 1), urCorner)
-        self._win.addch(yCStart + (mfY + 1) * (RC.MINE_FIELD_CELL_CHEIGHT + 1), xCStart + mfX * (RC.MINE_FIELD_CELL_CWIDTH + 1), llCorner)
-        self._win.addch(yCStart + (mfY + 1) * (RC.MINE_FIELD_CELL_CHEIGHT + 1), xCStart + (mfX + 1) * (RC.MINE_FIELD_CELL_CWIDTH + 1), lrCorner)
+        if self.isBoomed():
+            borderStyle = RC.MINE_FIELD_BORDER_BOOMED_STYLE.attr()
+        elif self.isFinished():
+            borderStyle = RC.MINE_FIELD_BORDER_FINISHED_STYLE.attr()
+        else:
+            borderStyle = RC.MINE_FIELD_BORDER_DEFAULT_STYLE.attr()
+
+        self._win.addch(yCStart + mfY * (RC.MINE_FIELD_CELL_CHEIGHT + 1), xCStart + mfX * (RC.MINE_FIELD_CELL_CWIDTH + 1), ulCorner, borderStyle)
+        self._win.addch(yCStart + mfY * (RC.MINE_FIELD_CELL_CHEIGHT + 1), xCStart + (mfX + 1) * (RC.MINE_FIELD_CELL_CWIDTH + 1), urCorner, borderStyle)
+        self._win.addch(yCStart + (mfY + 1) * (RC.MINE_FIELD_CELL_CHEIGHT + 1), xCStart + mfX * (RC.MINE_FIELD_CELL_CWIDTH + 1), llCorner, borderStyle)
+        self._win.addch(yCStart + (mfY + 1) * (RC.MINE_FIELD_CELL_CHEIGHT + 1), xCStart + (mfX + 1) * (RC.MINE_FIELD_CELL_CWIDTH + 1), lrCorner, borderStyle)
 
         for x in range(1, RC.MINE_FIELD_CELL_CWIDTH + 1):
-            self._win.addch(yCStart + mfY * (RC.MINE_FIELD_CELL_CHEIGHT + 1), xCStart + mfX * (RC.MINE_FIELD_CELL_CWIDTH + 1) + x, curses.ACS_HLINE)
-            self._win.addch(yCStart + (mfY + 1) * (RC.MINE_FIELD_CELL_CHEIGHT + 1), xCStart + mfX * (RC.MINE_FIELD_CELL_CWIDTH + 1) + x, curses.ACS_HLINE)
+            self._win.addch(yCStart + mfY * (RC.MINE_FIELD_CELL_CHEIGHT + 1), xCStart + mfX * (RC.MINE_FIELD_CELL_CWIDTH + 1) + x, curses.ACS_HLINE, borderStyle)
+            self._win.addch(yCStart + (mfY + 1) * (RC.MINE_FIELD_CELL_CHEIGHT + 1), xCStart + mfX * (RC.MINE_FIELD_CELL_CWIDTH + 1) + x, curses.ACS_HLINE, borderStyle)
 
         for y in range(1, RC.MINE_FIELD_CELL_CHEIGHT + 1):
-            self._win.addch(yCStart + mfY * (RC.MINE_FIELD_CELL_CHEIGHT + 1) + y, xCStart + mfX * (RC.MINE_FIELD_CELL_CWIDTH + 1), curses.ACS_VLINE)
-            self._win.addch(yCStart + mfY * (RC.MINE_FIELD_CELL_CHEIGHT + 1) + y, xCStart + (mfX + 1) * (RC.MINE_FIELD_CELL_CWIDTH + 1), curses.ACS_VLINE)
+            self._win.addch(yCStart + mfY * (RC.MINE_FIELD_CELL_CHEIGHT + 1) + y, xCStart + mfX * (RC.MINE_FIELD_CELL_CWIDTH + 1), curses.ACS_VLINE, borderStyle)
+            self._win.addch(yCStart + mfY * (RC.MINE_FIELD_CELL_CHEIGHT + 1) + y, xCStart + (mfX + 1) * (RC.MINE_FIELD_CELL_CWIDTH + 1), curses.ACS_VLINE, borderStyle)
 
 
         self._win.addstr(yCStart + mfY * (RC.MINE_FIELD_CELL_CHEIGHT + 1) + 1, xCStart + mfX * (RC.MINE_FIELD_CELL_CWIDTH + 1) + 1, cell.text(), cell.attr())
@@ -115,21 +122,25 @@ class MineFieldWindow:
     def currentMineFieldSize(self):
 
         self._shell.run("query width")
-        mfWidth = int(list(self._shell.getOutput())[0])
+        mfWidth = int(next(self._shell.getOutput()))
 
         self._shell.run("query height")
-        mfHeight = int(list(self._shell.getOutput())[0])
+        mfHeight = int(next(self._shell.getOutput()))
 
         return mfWidth, mfHeight
 
     def isBoomed(self):
         self._shell.run('query boomed')
-        return list(self._shell.getOutput())[0] == 'yes'
+        return next(self._shell.getOutput()) == 'yes'
+
+    def isFinished(self):
+        self._shell.run('query success')
+        return next(self._shell.getOutput()) == 'yes'
 
     def cellAt(self, mfX, mfY):
 
         self._shell.run("peek %d %d" % (mfX, mfY))
-        cell = list(self._shell.getOutput())[0]
+        cell = next(self._shell.getOutput())
 
         if cell == '0':
             return RC.CELL_DIGIT_NONE
@@ -198,6 +209,8 @@ class StatusWindow:
                 StatusWindow.BUTTON_RECORDS: RC.BUTTON_RECORDS
                 })
 
+        self._shell = shell
+
     def isTimerReset(self):
         return self._startTime is None and self._elapsedTime is None
 
@@ -231,11 +244,23 @@ class StatusWindow:
 
         return "%02d:%02d.%01d" % (nmins, nsecs, ntenth)
 
-    def drawClock(self):
-        timeStr = RC.TIMER.text() % self.clockString()
+    def progressString(self):
+        self._shell.run("query flags")
+        nFlags = next(self._shell.getOutput())
+        self._shell.run("query mines")
+        nMines = next(self._shell.getOutput())
+
+        return "%s flags / %s mines" % (nFlags, nMines)
+
+    def drawStatus(self):
         _, cWidth = self._win.getmaxyx()
 
+        timeStr = RC.TIMER.text() % self.clockString()
         self._win.addstr(0, cWidth - len(timeStr) - 1, timeStr, RC.TIMER.attr())
+        cWidth -= len(timeStr) + 1
+
+        progStr = RC.MINES_REMAINING.text() % self.progressString()
+        self._win.addstr(0, cWidth - len(progStr) - 1, progStr, RC.MINES_REMAINING.attr())
 
     def drawButtons(self):
         cStart = 0
@@ -259,7 +284,7 @@ class StatusWindow:
 
     def updateAll(self):
         self.drawButtons()
-        self.drawClock()
+        self.drawStatus()
         self._win.noutrefresh()
 
 class LogWindow:
@@ -319,7 +344,7 @@ class EventLoop:
             for line in SHELL.getOutput():
                 LOG_WINDOW.push(line)
 
-            if MINE_FIELD_WINDOW.isBoomed():
+            if MINE_FIELD_WINDOW.isBoomed() or MINE_FIELD_WINDOW.isFinished():
                 STATUS_WINDOW.stopTimer()
 
         elif btn == curses.BUTTON3_PRESSED:
