@@ -12,14 +12,21 @@ class Shell:
         self._minesCount = None
         self._isBoomed = False
         self._output = []
+        self._input = None
 
     def getOutput(self):
 
-        return self._output
+        for o in self._output:
+            yield o
+
+    def getInput(self):
+
+        return self._input
 
     def run(self, cmd):
 
         self._output = []
+        self._input = cmd
 
         args = self._parseMineField(cmd)
         if args is not None:
@@ -339,10 +346,25 @@ class Shell:
         if self._checkCoordinates(x, y) is False:
             return
 
-        if self._mineField.isRevealed(x, y):
-            self._output.append("%d" % self._mineField.getDigit(x, y))
-        elif self._mineField.isFlagged(x, y):
-            self._output.append("flagged")
+        if self._isBoomed:
+            if self._mineField.isRevealed(x, y):
+                self._output.append("%d" % self._mineField.getDigit(x, y))
+            elif (x, y) in self._boomedMines:
+                self._output.append("boomed")
+            elif (x, y) in self._mineField.getFalseFlags():
+                self._output.append("falseflag")
+            elif self._mineField.isFlagged(x, y):
+                self._output.append("trueflag")
+            elif self._mineField.isMine(x, y):
+                self._output.append("mine")
+            else:
+                self._output.append("unexplored")
+
         else:
-            self._output.append("unexplored")
+            if self._mineField.isRevealed(x, y):
+                self._output.append("%d" % self._mineField.getDigit(x, y))
+            elif self._mineField.isFlagged(x, y):
+                self._output.append("flagged")
+            else:
+                self._output.append("unexplored")
 

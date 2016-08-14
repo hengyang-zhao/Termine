@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import curses
 from collections import deque
@@ -30,21 +30,16 @@ class MineFieldPane:
         self._win = curses.newwin(curses.LINES - 1, width, 0, 0)
 
         self._styles[MineFieldPane.CELL_0_COLOR_ID] = 0;
-        self._styles[MineFieldPane.CELL_1_COLOR_ID] = 0;
-        self._styles[MineFieldPane.CELL_2_COLOR_ID] = 0;
-        self._styles[MineFieldPane.CELL_3_COLOR_ID] = 0;
-        self._styles[MineFieldPane.CELL_4_COLOR_ID] = 0;
-        self._styles[MineFieldPane.CELL_5_COLOR_ID] = 0;
-        self._styles[MineFieldPane.CELL_6_COLOR_ID] = 0;
-        self._styles[MineFieldPane.CELL_7_COLOR_ID] = 0;
-        self._styles[MineFieldPane.CELL_8_COLOR_ID] = 0;
+        self._styles[MineFieldPane.CELL_1_COLOR_ID] = curses.A_BOLD;
+        self._styles[MineFieldPane.CELL_2_COLOR_ID] = 2;
+        self._styles[MineFieldPane.CELL_3_COLOR_ID] = 3;
+        self._styles[MineFieldPane.CELL_4_COLOR_ID] = 4;
+        self._styles[MineFieldPane.CELL_5_COLOR_ID] = 5;
+        self._styles[MineFieldPane.CELL_6_COLOR_ID] = 6;
+        self._styles[MineFieldPane.CELL_7_COLOR_ID] = 7;
+        self._styles[MineFieldPane.CELL_8_COLOR_ID] = 8;
         self._styles[MineFieldPane.CELL_FLAG_COLOR_ID] = curses.A_REVERSE;
         self._styles[MineFieldPane.CELL_BLANK_COLOR_ID] = curses.A_REVERSE;
-
-    def getMaxFieldSize(self):
-
-        yMax, xMax = self._win.getmaxyx()
-        return int((xMax - 11) / 4), int((yMax - 5) / 2)
 
     def allocateMineField(self, mfWidth, mfHeight):
 
@@ -177,10 +172,11 @@ class MineFieldPane:
 
 class LogPane:
 
-    def __init__(self, stdscr, width):
+    def __init__(self, stdscr, width, shell):
 
         self._win = curses.newwin(curses.LINES - 1, width, 0, curses.COLS - width)
         self._logLines = deque()
+        self._shell
 
     def push(self, s):
 

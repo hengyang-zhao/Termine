@@ -58,7 +58,7 @@ class MineField:
             yield x, y
 
     def getFalseFlags(self):
-        for x, y in set(self.getFlags).difference(set(self.getMines())):
+        for x, y in set(self.getFlags()).difference(set(self.getMines())):
             yield x, y
 
     def getMinesCount(self):
