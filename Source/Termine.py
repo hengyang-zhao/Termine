@@ -407,7 +407,6 @@ class EventLoop:
         else: pass
 
     def newGameButtonOnMouseClick(self):
-        LOG_WINDOW.push("OMG")
         RestartGame()
 
     def pauseGameButtonOnMouseClick(self):
