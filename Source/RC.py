@@ -39,6 +39,8 @@ class StyledText:
     def attr(self):
         return self._style.attr()
 
+CELL_PAUSED     = StyledText(' ~ ', curses.A_DIM | curses.A_REVERSE, 'white')
+
 CELL_DIGIT_NONE = StyledText('   ', 0)
 CELL_DIGIT_1    = StyledText(' 1 ', curses.A_BOLD, 'blue')
 CELL_DIGIT_2    = StyledText(' 2 ', 0, 'green')
@@ -75,6 +77,7 @@ MINE_FIELD_DEFAULT_MINES_PERCENTAGE = 0.16
 
 BUTTON_NEW_GAME = StyledText(' New Game ', curses.A_REVERSE, 'white')
 BUTTON_PAUSE    = StyledText('  PAUSE  ', curses.A_REVERSE, 'white')
+BUTTON_RESUME   = StyledText(' UNPAUSE ', curses.A_REVERSE, 'white')
 BUTTON_RECORDS  = StyledText(' RECORDS ', curses.A_REVERSE, 'white')
 
 TIMER = StyledText(' %s ', curses.A_REVERSE, 'white')

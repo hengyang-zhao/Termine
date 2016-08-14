@@ -14,6 +14,7 @@ import Shell
 MINE_FIELD_WINDOW = None
 STATUS_WINDOW = None
 LOG_WINDOW = None
+TIMER = None
 SHELL = None
 ROOT_SCREEN = None
 
@@ -35,7 +36,7 @@ class MineFieldWindow:
 
         self._win.erase()
         self._win.border()
-        self.redrawMineField()
+        self.drawMineField()
         self._win.noutrefresh()
 
     def retrieveMineFieldCoordinate(self, cX, cY):
@@ -48,17 +49,15 @@ class MineFieldWindow:
 
         return (cX - xCStart) // 4, (cY - yCStart) // 2
 
-    def redrawMineField(self):
+    def drawMineField(self):
 
         mfWidth, mfHeight = self.currentMineFieldSize()
 
         for mfX in range(mfWidth):
             for mfY in range(mfHeight):
-                self.redrawMineCell(mfX, mfY)
+                self.drawMineCell(mfX, mfY)
 
-    def redrawMineCell(self, mfX, mfY):
-
-        cell = self.cellAt(mfX, mfY)
+    def drawMineCell(self, mfX, mfY):
 
         xCStart, yCStart = self._mineFieldXYCStart()
         mfWidth, mfHeight = self.currentMineFieldSize()
@@ -119,6 +118,11 @@ class MineFieldWindow:
             self._win.addch(yCStart + mfY * (RC.MINE_FIELD_CELL_CHEIGHT + 1) + y, xCStart + mfX * (RC.MINE_FIELD_CELL_CWIDTH + 1), curses.ACS_VLINE, borderStyle)
             self._win.addch(yCStart + mfY * (RC.MINE_FIELD_CELL_CHEIGHT + 1) + y, xCStart + (mfX + 1) * (RC.MINE_FIELD_CELL_CWIDTH + 1), curses.ACS_VLINE, borderStyle)
 
+
+        if TIMER.isPaused() and not self.isBoomed() and not self.isFinished():
+            cell = RC.CELL_PAUSED
+        else:
+            cell = self.cellAt(mfX, mfY)
 
         self._win.addstr(yCStart + mfY * (RC.MINE_FIELD_CELL_CHEIGHT + 1) + 1, xCStart + mfX * (RC.MINE_FIELD_CELL_CWIDTH + 1) + 1, cell.text(), cell.attr())
 
@@ -204,35 +208,23 @@ class StatusWindow:
 
     def __init__(self, width):
         self._win = curses.newwin(1, width, curses.LINES - 1, 0)
-        self._startTime = None
-        self._elapsedTime = None
-        self._buttons = OrderedDict({
+
+    def _buttons(self):
+        if TIMER.isPaused() and not MINE_FIELD_WINDOW.isFinished() and not MINE_FIELD_WINDOW.isBoomed():
+            return OrderedDict({
+                StatusWindow.BUTTON_NEW_GAME: RC.BUTTON_NEW_GAME,
+                StatusWindow.BUTTON_PAUSE: RC.BUTTON_RESUME,
+                StatusWindow.BUTTON_RECORDS: RC.BUTTON_RECORDS
+                })
+        else:
+            return OrderedDict({
                 StatusWindow.BUTTON_NEW_GAME: RC.BUTTON_NEW_GAME,
                 StatusWindow.BUTTON_PAUSE: RC.BUTTON_PAUSE,
                 StatusWindow.BUTTON_RECORDS: RC.BUTTON_RECORDS
                 })
 
-    def isTimerReset(self):
-        return self._startTime is None and self._elapsedTime is None
-
-    def startTimer(self):
-        self._startTime = datetime.datetime.now()
-        self._elapsedTime = None
-
-    def resetTimer(self):
-        self._startTime = None
-        self._elapsedTime = None
-
-    def stopTimer(self):
-        assert self._startTime is not None
-        if self._elapsedTime is None:
-            self._elapsedTime = datetime.datetime.now() - self._startTime
-
     def clockString(self):
-        if self._startTime is None:
-            return "00:00.0"
-
-        elapsed = self._elapsedTime if self._elapsedTime is not None else datetime.datetime.now() - self._startTime
+        elapsed = TIMER.elapsed()
 
         nmins = elapsed.seconds // 60
         nsecs = elapsed.seconds % 60
@@ -269,7 +261,7 @@ class StatusWindow:
     def drawButtons(self):
         cStart = 0
 
-        for btn in self._buttons.values():
+        for btn in self._buttons().values():
             self._win.addstr(0, cStart, btn.text(), btn.attr())
             cStart += 1 + len(btn.text())
 
@@ -278,7 +270,7 @@ class StatusWindow:
             return None
 
         cStart = 0
-        for k, btn in self._buttons.items():
+        for k, btn in self._buttons().items():
 
             if cX >= cStart and cX < cStart + len(btn.text()):
                 return k
@@ -328,9 +320,52 @@ class LogWindow:
         cHeight, _ = self._win.getmaxyx()
         return cHeight - RC.LOG_BORDER_CHEIGHT * 2
 
+class Timer:
+    def __init__(self):
+        self._whenStarted = None
+        self._whenPaused = None
+
+    def start(self):
+        assert self.isReset() is True
+        self._whenStarted = datetime.datetime.now()
+
+    def pause(self):
+        assert self.isRunning() is True
+        self._whenPaused = datetime.datetime.now()
+
+    def resume(self):
+        assert self.isPaused() is True
+        self._whenStarted = datetime.datetime.now() - self.elapsed()
+        self._whenPaused = None
+
+    def reset(self):
+        self._whenStarted = None
+        self._whenPaused = None
+
+    def elapsed(self):
+        if self.isReset():
+            return datetime.timedelta(0)
+        elif self.isPaused():
+            return self._whenPaused - self._whenStarted
+        else:
+            assert self.isRunning()
+            return datetime.datetime.now() - self._whenStarted
+
+    def isRunning(self):
+        return self._whenStarted is not None and self._whenPaused is None
+
+    def isReset(self):
+        return self._whenStarted is None and self._whenPaused is None
+
+    def isPaused(self):
+        return self._whenStarted is not None and self._whenPaused is not None
+
 class EventLoop:
 
     def mineFieldOnMouseClick(self, mX, mY, btn):
+
+        if TIMER.isPaused():
+            return
 
         coor = MINE_FIELD_WINDOW.retrieveMineFieldCoordinate(mX, mY)
 
@@ -339,8 +374,8 @@ class EventLoop:
 
         if btn == curses.BUTTON1_PRESSED:
 
-            if STATUS_WINDOW.isTimerReset():
-                STATUS_WINDOW.startTimer()
+            if TIMER.isReset():
+                TIMER.start()
 
             x, y = coor
             LOG_WINDOW.push("poke %d %d" % (x, y))
@@ -349,7 +384,7 @@ class EventLoop:
                 LOG_WINDOW.push(line)
 
             if MINE_FIELD_WINDOW.isBoomed() or MINE_FIELD_WINDOW.isFinished():
-                STATUS_WINDOW.stopTimer()
+                TIMER.pause()
 
         elif btn == curses.BUTTON3_PRESSED:
             x, y = coor
@@ -372,11 +407,19 @@ class EventLoop:
         else: pass
 
     def newGameButtonOnMouseClick(self):
-        LOG_WINDOW.push("OMG")
         RestartGame()
 
     def pauseGameButtonOnMouseClick(self):
-        pass
+        if TIMER.isReset():
+            return
+
+        if TIMER.isPaused():
+            if not MINE_FIELD_WINDOW.isBoomed() and not MINE_FIELD_WINDOW.isFinished():
+                TIMER.resume()
+            return
+
+        if TIMER.isRunning():
+            TIMER.pause()
 
     def bestRecordButtonOnMouseClick(self):
         pass
@@ -388,7 +431,10 @@ class EventLoop:
             event = ROOT_SCREEN.getch()
 
             if event == curses.KEY_MOUSE:
-                mouseEvent = curses.getmouse()
+                try:
+                    mouseEvent = curses.getmouse()
+                except:
+                    continue
                 _, mX, mY, _, btn = mouseEvent
 
                 self.mineFieldOnMouseClick(mX, mY, btn)
@@ -432,7 +478,7 @@ def RestartGame():
     else:
         shellCmd = "minefield %d %d %d" % (mfWidthMax, mfHeightMax, int(mfWidthMax * mfHeightMax * RC.MINE_FIELD_DEFAULT_MINES_PERCENTAGE))
     SHELL.run(shellCmd)
-    STATUS_WINDOW.resetTimer()
+    TIMER.reset()
 
 class ClockUpdater(threading.Thread):
 
@@ -448,6 +494,7 @@ def Main(stdscr):
     global STATUS_WINDOW
     global LOG_WINDOW
     global ROOT_SCREEN
+    global TIMER
     global SHELL
 
     InitCurses()
@@ -458,6 +505,7 @@ def Main(stdscr):
     MINE_FIELD_WINDOW = MineFieldWindow(curses.COLS - RC.LOG_WINDOW_WIDTH)
     STATUS_WINDOW = StatusWindow(curses.COLS - RC.LOG_WINDOW_WIDTH)
     LOG_WINDOW = LogWindow(RC.LOG_WINDOW_WIDTH)
+    TIMER = Timer()
 
     RestartGame()
 
