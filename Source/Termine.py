@@ -36,7 +36,7 @@ class MineFieldWindow:
 
         self._win.erase()
         self._win.border()
-        self.redrawMineField()
+        self.drawMineField()
         self._win.noutrefresh()
 
     def retrieveMineFieldCoordinate(self, cX, cY):
@@ -49,17 +49,15 @@ class MineFieldWindow:
 
         return (cX - xCStart) // 4, (cY - yCStart) // 2
 
-    def redrawMineField(self):
+    def drawMineField(self):
 
         mfWidth, mfHeight = self.currentMineFieldSize()
 
         for mfX in range(mfWidth):
             for mfY in range(mfHeight):
-                self.redrawMineCell(mfX, mfY)
+                self.drawMineCell(mfX, mfY)
 
-    def redrawMineCell(self, mfX, mfY):
-
-        cell = self.cellAt(mfX, mfY)
+    def drawMineCell(self, mfX, mfY):
 
         xCStart, yCStart = self._mineFieldXYCStart()
         mfWidth, mfHeight = self.currentMineFieldSize()
@@ -120,6 +118,11 @@ class MineFieldWindow:
             self._win.addch(yCStart + mfY * (RC.MINE_FIELD_CELL_CHEIGHT + 1) + y, xCStart + mfX * (RC.MINE_FIELD_CELL_CWIDTH + 1), curses.ACS_VLINE, borderStyle)
             self._win.addch(yCStart + mfY * (RC.MINE_FIELD_CELL_CHEIGHT + 1) + y, xCStart + (mfX + 1) * (RC.MINE_FIELD_CELL_CWIDTH + 1), curses.ACS_VLINE, borderStyle)
 
+
+        if TIMER.isPaused() and not self.isBoomed():
+            cell = RC.CELL_PAUSED
+        else:
+            cell = self.cellAt(mfX, mfY)
 
         self._win.addstr(yCStart + mfY * (RC.MINE_FIELD_CELL_CHEIGHT + 1) + 1, xCStart + mfX * (RC.MINE_FIELD_CELL_CWIDTH + 1) + 1, cell.text(), cell.attr())
 
@@ -352,6 +355,9 @@ class EventLoop:
 
     def mineFieldOnMouseClick(self, mX, mY, btn):
 
+        if TIMER.isPaused():
+            return
+
         coor = MINE_FIELD_WINDOW.retrieveMineFieldCoordinate(mX, mY)
 
         if coor is None:
@@ -396,7 +402,16 @@ class EventLoop:
         RestartGame()
 
     def pauseGameButtonOnMouseClick(self):
-        pass
+        if TIMER.isReset():
+            return
+
+        if TIMER.isPaused():
+            if not MINE_FIELD_WINDOW.isBoomed() and not MINE_FIELD_WINDOW.isFinished():
+                TIMER.resume()
+            return
+
+        if TIMER.isRunning():
+            TIMER.pause()
 
     def bestRecordButtonOnMouseClick(self):
         pass
