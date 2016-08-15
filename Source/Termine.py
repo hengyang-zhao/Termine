@@ -25,7 +25,7 @@ class MineFieldWindow:
 
     def __init__(self, width):
 
-        self._win = curses.newwin(curses.LINES - 1, width, 0, 0)
+        self._win = curses.newwin(curses.LINES - 3, width, 0, 0)
 
     def getMaxMineFieldSize(self):
 
@@ -37,7 +37,9 @@ class MineFieldWindow:
 
     def drawBorder(self):
         self._win.border()
-        title = " Termine Field "
+
+        mfWidth, mfHeight = self.currentMineFieldSize()
+        title = " Termine Field %d x %d " % (mfWidth, mfHeight)
 
         cX = 2
         self._win.addch(0, cX, curses.ACS_RTEE)
@@ -222,7 +224,7 @@ class StatusWindow:
     BUTTON_LEAVE = 3
 
     def __init__(self, width):
-        self._win = curses.newwin(1, width, curses.LINES - 1, 0)
+        self._win = curses.newwin(3, width, curses.LINES - 3, 0)
 
     def _buttons(self):
         if TIMER.isPaused() and not MINE_FIELD_WINDOW.isFinished() and not MINE_FIELD_WINDOW.isBoomed():
@@ -256,37 +258,68 @@ class StatusWindow:
 
     def progressString(self):
         SHELL.run("query flags")
-        nFlags = next(SHELL.getOutput())
+        nFlags = int(next(SHELL.getOutput()))
         SHELL.run("query mines")
-        nMines = next(SHELL.getOutput())
+        nMines = int(next(SHELL.getOutput()))
 
-        return "%s flags / %s mines" % (nFlags, nMines)
+        return "%2d flags / %2d mines" % (nFlags, nMines)
 
     def drawStatus(self, clockOnly=False):
         _, cWidth = self._win.getmaxyx()
 
         timeStr = RC.TIMER.text() % self.clockString()
-        self._win.addstr(0, cWidth - len(timeStr) - 1, timeStr, RC.TIMER.attr())
+        self._win.addstr(1, cWidth - len(timeStr) - 1, timeStr, RC.TIMER.attr())
 
         if clockOnly is True: return
 
         cWidth -= len(timeStr) + 1
 
         progStr = RC.MINES_REMAINING.text() % self.progressString()
-        self._win.addstr(0, cWidth - len(progStr) - 1, progStr, RC.MINES_REMAINING.attr())
+        self._win.addstr(1, cWidth - len(progStr) - 1, progStr, RC.MINES_REMAINING.attr())
+
+        cWidth -= len(progStr) + 2
+        return cWidth
 
     def drawButtons(self):
-        cStart = 0
+        cStart = 1
 
         for btn in self._buttons().values():
-            self._win.addstr(0, cStart, btn.text(), btn.attr())
+            self._win.addstr(1, cStart, btn.text(), btn.attr())
             cStart += 1 + len(btn.text())
 
+        return cStart
+
+    def drawProgressBar(self, progBarCBegin, progBarCEnd):
+        self._win.addstr(1, progBarCBegin, "[")
+        self._win.addstr(1, progBarCEnd - 1, "]")
+        progBarLength = progBarCEnd - progBarCBegin - 2
+
+        mfWidth, mfHeight = MINE_FIELD_WINDOW.currentMineFieldSize()
+        nCells = mfWidth * mfHeight
+
+        SHELL.run("query mines")
+        nMines = int(next(SHELL.getOutput()))
+
+        SHELL.run("query revealed")
+        nRevealed = len(list(SHELL.getOutput()))
+
+        nNonMines = nCells - nMines
+
+        nSharps = progBarLength * nRevealed // nNonMines
+        nDashes = progBarLength - nSharps
+
+        percent = str(nRevealed * 100 // nNonMines) + "%"
+
+        self._win.addstr(1, progBarCBegin + 1, "#" * nSharps)
+        self._win.addstr(1, progBarCBegin + 1 + nSharps, "-" * nDashes)
+
+        self._win.addstr(1, progBarCEnd - 1 - len(percent), percent)
+
     def retrieveClickedButton(self, cX, cY):
-        if cY != curses.LINES - 1:
+        if cY != curses.LINES - 2:
             return None
 
-        cStart = 0
+        cStart = 1
         for k, btn in self._buttons().items():
 
             if cX >= cStart and cX < cStart + len(btn.text()):
@@ -297,18 +330,20 @@ class StatusWindow:
 
     def updateClock(self):
         self.drawStatus(clockOnly=True)
+        self._win.border()
         self._win.noutrefresh()
 
     def updateAll(self):
-        self.drawButtons()
-        self.drawStatus()
+        progBarCBegin = self.drawButtons()
+        progBarCEnd = self.drawStatus()
+        self.drawProgressBar(progBarCBegin, progBarCEnd)
         self._win.noutrefresh()
 
 class LogWindow:
 
     def __init__(self, width):
 
-        self._win = curses.newwin(curses.LINES, width, 0, curses.COLS - width)
+        self._win = curses.newwin(curses.LINES - 3, width, 0, curses.COLS - width)
         self._logLines = deque()
 
     def push(self, s):
@@ -675,7 +710,7 @@ def Main(stdscr):
     SHELL = Shell.Shell()
     ROOT_SCREEN = stdscr
     MINE_FIELD_WINDOW = MineFieldWindow(curses.COLS - RC.LOG_WINDOW_CWIDTH)
-    STATUS_WINDOW = StatusWindow(curses.COLS - RC.LOG_WINDOW_CWIDTH)
+    STATUS_WINDOW = StatusWindow(curses.COLS)
     LOG_WINDOW = LogWindow(RC.LOG_WINDOW_CWIDTH)
     RECORD_WINDOW = RecordWindow()
     TIMER = Timer()

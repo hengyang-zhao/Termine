@@ -67,6 +67,10 @@ class MineField:
     def getFlagsCount(self):
         return len(self._flagged)
 
+    def getRevealed(self):
+        for (x, y) in self._revealed:
+            yield x, y
+
     def getUnexplored(self):
         for x in range(self._width):
             for y in range(self._height):

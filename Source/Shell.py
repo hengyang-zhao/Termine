@@ -234,6 +234,12 @@ class Shell:
             self._output.append("%d" % self._mineField.getFlagsCount())
         elif query == 'mines':
             self._output.append("%d" % self._minesCount)
+        elif query == 'unexplored':
+            for x, y in self._mineField.getUnexplored():
+                self._output.append("%d %d" % (x, y))
+        elif query == 'revealed':
+            for x, y in self._mineField.getRevealed():
+                self._output.append("%d %d" % (x, y))
         elif query == 'width':
             width, _ = self._mineField.getSize()
             self._output.append("%d" % width)
