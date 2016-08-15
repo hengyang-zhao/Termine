@@ -262,7 +262,7 @@ class StatusWindow:
         SHELL.run("query mines")
         nMines = int(next(SHELL.getOutput()))
 
-        return "%2d flags / %2d mines" % (nFlags, nMines)
+        return "%d flags / %d mines" % (nFlags, nMines)
 
     def drawStatus(self, clockOnly=False):
         _, cWidth = self._win.getmaxyx()
