@@ -2,8 +2,10 @@
 
 import curses
 import datetime
+import pickle
 import threading
 import time
+import sys
 
 from collections import deque
 from collections import OrderedDict
@@ -13,6 +15,7 @@ import Shell
 
 MINE_FIELD_WINDOW = None
 STATUS_WINDOW = None
+RECORD_WINDOW = None
 LOG_WINDOW = None
 TIMER = None
 SHELL = None
@@ -32,10 +35,21 @@ class MineFieldWindow:
 
         return mfWidth, mfHeight
 
+    def drawBorder(self):
+        self._win.border()
+        title = " Termine Field "
+
+        cX = 2
+        self._win.addch(0, cX, curses.ACS_RTEE)
+        cX += 1
+        self._win.addstr(0, cX, title)
+        cX += len(title)
+        self._win.addch(0, cX, curses.ACS_LTEE)
+
     def updateAll(self):
 
         self._win.erase()
-        self._win.border()
+        self.drawBorder()
         self.drawMineField()
         self._win.noutrefresh()
 
@@ -205,6 +219,7 @@ class StatusWindow:
     BUTTON_NEW_GAME = 0
     BUTTON_PAUSE = 1
     BUTTON_RECORDS = 2
+    BUTTON_LEAVE = 3
 
     def __init__(self, width):
         self._win = curses.newwin(1, width, curses.LINES - 1, 0)
@@ -214,13 +229,15 @@ class StatusWindow:
             return OrderedDict({
                 StatusWindow.BUTTON_NEW_GAME: RC.BUTTON_NEW_GAME,
                 StatusWindow.BUTTON_PAUSE: RC.BUTTON_RESUME,
-                StatusWindow.BUTTON_RECORDS: RC.BUTTON_RECORDS
+                StatusWindow.BUTTON_RECORDS: RC.BUTTON_RECORDS,
+                StatusWindow.BUTTON_LEAVE: RC.BUTTON_LEAVE
                 })
         else:
             return OrderedDict({
                 StatusWindow.BUTTON_NEW_GAME: RC.BUTTON_NEW_GAME,
                 StatusWindow.BUTTON_PAUSE: RC.BUTTON_PAUSE,
-                StatusWindow.BUTTON_RECORDS: RC.BUTTON_RECORDS
+                StatusWindow.BUTTON_RECORDS: RC.BUTTON_RECORDS,
+                StatusWindow.BUTTON_LEAVE: RC.BUTTON_LEAVE
                 })
 
     def clockString(self):
@@ -310,15 +327,113 @@ class LogWindow:
             self._win.addstr(y + 1, x + 1, line)
             y += 1
 
+    def drawBorder(self):
+        self._win.border()
+        title = " Log "
+
+        cX = 2
+        self._win.addch(0, cX, curses.ACS_RTEE)
+        cX += 1
+        self._win.addstr(0, cX, title)
+        cX += len(title)
+        self._win.addch(0, cX, curses.ACS_LTEE)
+
     def updateAll(self):
 
         self.printLog()
-        self._win.border()
+        self.drawBorder()
         self._win.noutrefresh()
 
     def _maxLines(self):
         cHeight, _ = self._win.getmaxyx()
         return cHeight - RC.LOG_BORDER_CHEIGHT * 2
+
+class RecordWindow:
+    def __init__(self):
+
+        xCStart = (curses.COLS - RC.RECORD_WINDOW_CWIDTH) // 2
+        yCStart = (curses.LINES - RC.RECORD_WINDOW_CHEIGHT) // 2
+        self._win = curses.newwin(RC.RECORD_WINDOW_CHEIGHT, RC.RECORD_WINDOW_CWIDTH, yCStart, xCStart)
+        self._backWin = curses.newwin(RC.RECORD_WINDOW_CHEIGHT + 2, RC.RECORD_WINDOW_CWIDTH + 2, yCStart - 1, xCStart - 1)
+        self._records = {}
+        self._currentRecord = None
+        self.loadRecords()
+
+        self.visible = False
+
+    def updateRecord(self):
+        self.flushRecords()
+        self._currentRecord = TIMER.elapsed()
+
+    def recordCategoryString(self):
+
+        SHELL.run("query mines")
+        nMines = next(SHELL.getOutput())
+
+        SHELL.run("query width")
+        mfWidth = next(SHELL.getOutput())
+
+        SHELL.run("query height")
+        mfHeight = next(SHELL.getOutput())
+
+        return "%s mines on %s by %s field" % (nMines, mfWidth, mfHeight)
+
+    def loadRecords(self):
+        try:
+            with open(RC.RECORD_FILE_PATH, 'rb') as recFile:
+                self._records = pickle.load(recFile)
+        except:
+            self._records = {}
+
+    def flushRecords(self):
+        if self._currentRecord is None:
+            return
+
+        self._records.setdefault(self.recordCategoryString(), []).append(self._currentRecord)
+        self._currentRecord = None
+        with open(RC.RECORD_FILE_PATH, 'wb') as recFile:
+            pickle.dump(self._records, recFile)
+
+    def drawRecords(self):
+        cX, cY = 1, 1
+        _, cHeight = self._win.getmaxyx()
+        rankMax = cHeight - 2
+        rank = 1
+
+        dispTable = []
+        for rec in self._records.get(self.recordCategoryString(), []):
+            dispTable.append((rec, False))
+
+        if self._currentRecord is not None:
+            dispTable.append((self._currentRecord, True))
+
+        for rec, isCurrent in sorted(dispTable, key=lambda e: e[0]):
+            self._win.addstr(cY, cX, "%2d: %s" % (rank, str(rec)),
+                    RC.RECORD_CURRENT_STYLE.attr() if isCurrent is True else RC.RECORD_DEFAULT_STYLE.attr())
+
+            cY += 1
+            rank += 1
+
+
+    def drawBorder(self):
+        self._win.border()
+        title = " Best records (%s) " % self.recordCategoryString()
+        cX = 2
+        self._win.addch(0, cX, curses.ACS_RTEE)
+        cX += 1
+        self._win.addstr(0, cX, title)
+        cX += len(title)
+        self._win.addch(0, cX, curses.ACS_LTEE)
+
+    def updateAll(self):
+        if self.visible is False:
+            return
+
+        self._backWin.erase()
+        self.drawBorder()
+        self.drawRecords()
+        self._backWin.noutrefresh()
+        self._win.noutrefresh()
 
 class Timer:
     def __init__(self):
@@ -365,12 +480,12 @@ class EventLoop:
     def mineFieldOnMouseClick(self, mX, mY, btn):
 
         if TIMER.isPaused():
-            return
+            return False
 
         coor = MINE_FIELD_WINDOW.retrieveMineFieldCoordinate(mX, mY)
 
         if coor is None:
-            return
+            return False
 
         if btn == curses.BUTTON1_PRESSED:
 
@@ -386,6 +501,10 @@ class EventLoop:
             if MINE_FIELD_WINDOW.isBoomed() or MINE_FIELD_WINDOW.isFinished():
                 TIMER.pause()
 
+            if MINE_FIELD_WINDOW.isFinished():
+                RECORD_WINDOW.updateRecord()
+                self.bestRecordButtonOnMouseClick()
+
         elif btn == curses.BUTTON3_PRESSED:
             x, y = coor
             LOG_WINDOW.push("toggle %d %d" % (x, y))
@@ -395,40 +514,85 @@ class EventLoop:
         else:
             pass
 
+        return True
+
     def statusBarOnMouseClick(self, mX, mY):
 
         button = STATUS_WINDOW.retrieveClickedButton(mX, mY)
+
+        if RECORD_WINDOW.visible is True:
+            self.bestRecordButtonOnMouseClick()
+            return True
+
         if button == StatusWindow.BUTTON_NEW_GAME:
             self.newGameButtonOnMouseClick()
-        elif button == StatusWindow.BUTTON_PAUSE:
+            return True
+
+        if button == StatusWindow.BUTTON_PAUSE:
             self.pauseGameButtonOnMouseClick()
-        elif button == StatusWindow.BUTTON_RECORDS:
+            return True
+
+        if button == StatusWindow.BUTTON_RECORDS:
             self.bestRecordButtonOnMouseClick()
-        else: pass
+            return True
+
+        if button == StatusWindow.BUTTON_LEAVE:
+            self.leaveButtonOnMouseClick()
+            return True
+
+        return False
 
     def newGameButtonOnMouseClick(self):
+        if RECORD_WINDOW.visible is True:
+            return
+
         RestartGame()
 
     def pauseGameButtonOnMouseClick(self):
-        if TIMER.isReset():
+        if RECORD_WINDOW.visible is True or TIMER.isReset() is True:
             return
 
-        if TIMER.isPaused():
+        if TIMER.isPaused() is True:
             if not MINE_FIELD_WINDOW.isBoomed() and not MINE_FIELD_WINDOW.isFinished():
                 TIMER.resume()
             return
 
-        if TIMER.isRunning():
+        if TIMER.isRunning() is True:
             TIMER.pause()
 
     def bestRecordButtonOnMouseClick(self):
-        pass
+
+        if RECORD_WINDOW.visible is True:
+
+            RECORD_WINDOW.visible = False
+
+            if TIMER.isReset() is True:
+                return
+
+            if TIMER.isPaused() is True:
+                if not MINE_FIELD_WINDOW.isBoomed() and not MINE_FIELD_WINDOW.isFinished():
+                    TIMER.resume()
+                return
+
+        else:
+
+            RECORD_WINDOW.visible = True
+
+            if TIMER.isRunning() is True:
+                TIMER.pause()
+
+    def leaveButtonOnMouseClick(self):
+        RECORD_WINDOW.flushRecords()
+        sys.exit(0) 
 
     def run(self):
 
         while True:
 
-            event = ROOT_SCREEN.getch()
+            try:
+                event = ROOT_SCREEN.getch()
+            except KeyboardInterrupt:
+                continue
 
             if event == curses.KEY_MOUSE:
                 try:
@@ -437,16 +601,22 @@ class EventLoop:
                     continue
                 _, mX, mY, _, btn = mouseEvent
 
-                self.mineFieldOnMouseClick(mX, mY, btn)
-                self.statusBarOnMouseClick(mX, mY)
+                if self.statusBarOnMouseClick(mX, mY) is True:
 
-                refreshAll()
+                    refreshAll()
+                    continue
+
+                if self.mineFieldOnMouseClick(mX, mY, btn) is True:
+
+                    refreshAll()
+                    continue
 
 def refreshAll():
 
     MINE_FIELD_WINDOW.updateAll()
     STATUS_WINDOW.updateAll()
     LOG_WINDOW.updateAll()
+    RECORD_WINDOW.updateAll()
     curses.doupdate()
 
 def InitColor():
@@ -478,6 +648,7 @@ def RestartGame():
     else:
         shellCmd = "minefield %d %d %d" % (mfWidthMax, mfHeightMax, int(mfWidthMax * mfHeightMax * RC.MINE_FIELD_DEFAULT_MINES_PERCENTAGE))
     SHELL.run(shellCmd)
+    RECORD_WINDOW.flushRecords()
     TIMER.reset()
 
 class ClockUpdater(threading.Thread):
@@ -494,6 +665,7 @@ def Main(stdscr):
     global STATUS_WINDOW
     global LOG_WINDOW
     global ROOT_SCREEN
+    global RECORD_WINDOW
     global TIMER
     global SHELL
 
@@ -502,9 +674,10 @@ def Main(stdscr):
 
     SHELL = Shell.Shell()
     ROOT_SCREEN = stdscr
-    MINE_FIELD_WINDOW = MineFieldWindow(curses.COLS - RC.LOG_WINDOW_WIDTH)
-    STATUS_WINDOW = StatusWindow(curses.COLS - RC.LOG_WINDOW_WIDTH)
-    LOG_WINDOW = LogWindow(RC.LOG_WINDOW_WIDTH)
+    MINE_FIELD_WINDOW = MineFieldWindow(curses.COLS - RC.LOG_WINDOW_CWIDTH)
+    STATUS_WINDOW = StatusWindow(curses.COLS - RC.LOG_WINDOW_CWIDTH)
+    LOG_WINDOW = LogWindow(RC.LOG_WINDOW_CWIDTH)
+    RECORD_WINDOW = RecordWindow()
     TIMER = Timer()
 
     RestartGame()
