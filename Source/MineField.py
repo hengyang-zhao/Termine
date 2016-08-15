@@ -83,10 +83,13 @@ class MineField:
     def deployMine(self, x, y):
         self._mines.add((x, y))
 
-    def clear(self):
+    def clear(self, keepFlags=False):
         self._mines = set()
         self._revealed = set()
-        self._flagged = set()
+
+        if keepFlags is False:
+            self._flagged = set()
+
         self._deployed = False
 
     def _flatIndex(self, x, y):
@@ -129,7 +132,7 @@ class MineDeployer:
         if seed is not None:
             rnd.seed(seed)
 
-        mineField.clear()
+        mineField.clear(keepFlags=True)
         for (i, j) in rnd.sample(possibleMines, nMines):
             mineField.deployMine(i, j)
 

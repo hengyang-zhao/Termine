@@ -271,6 +271,9 @@ class Shell:
         if self._checkCoordinates(x, y) is False:
             return
 
+        if self._mineField.isFlagged(x, y):
+            return
+
         if not self._mineField.isDeployed():
             md = MineDeployer()
             md.deploy(self._mineField, self._minesCount, x, y)
