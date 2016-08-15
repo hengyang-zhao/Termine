@@ -291,7 +291,7 @@ class StatusWindow:
 
     def drawProgressBar(self, progBarCBegin, progBarCEnd):
         self._win.addstr(1, progBarCBegin, "[")
-        self._win.addstr(1, progBarCEnd - 1, "]")
+        self._win.addstr(1, progBarCEnd - 1, "] ")
         progBarLength = progBarCEnd - progBarCBegin - 2
 
         mfWidth, mfHeight = MINE_FIELD_WINDOW.currentMineFieldSize()
