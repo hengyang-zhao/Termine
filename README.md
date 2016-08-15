@@ -1,2 +1,2 @@
 # Termine
-A terminal based mine-speeper game
+A terminal based mine-sweeper game
