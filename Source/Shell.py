@@ -230,16 +230,18 @@ class Shell:
             return
 
         query = args['query']
-        if query == 'flags':
+        if query == 'flagscount':
             self._output.append("%d" % self._mineField.getFlagsCount())
-        elif query == 'mines':
+        elif query == 'minescount':
             self._output.append("%d" % self._minesCount)
-        elif query == 'unexplored':
+        elif query == 'unexploredlist':
             for x, y in self._mineField.getUnexplored():
                 self._output.append("%d %d" % (x, y))
-        elif query == 'revealed':
+        elif query == 'revealedlist':
             for x, y in self._mineField.getRevealed():
                 self._output.append("%d %d" % (x, y))
+        elif query == 'revealedcount':
+            self._output.append("%d" % self._mineField.getRevealedCount())
         elif query == 'width':
             width, _ = self._mineField.getSize()
             self._output.append("%d" % width)

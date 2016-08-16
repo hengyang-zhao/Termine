@@ -257,9 +257,9 @@ class StatusWindow:
         return "%02d:%02d.%01d" % (nMins, nSecs, nTenths)
 
     def progressString(self):
-        SHELL.run("query flags")
+        SHELL.run("query flagscount")
         nFlags = int(next(SHELL.getOutput()))
-        SHELL.run("query mines")
+        SHELL.run("query minescount")
         nMines = int(next(SHELL.getOutput()))
 
         return "%d flags / %d mines" % (nFlags, nMines)
@@ -297,11 +297,11 @@ class StatusWindow:
         mfWidth, mfHeight = MINE_FIELD_WINDOW.currentMineFieldSize()
         nCells = mfWidth * mfHeight
 
-        SHELL.run("query mines")
+        SHELL.run("query minescount")
         nMines = int(next(SHELL.getOutput()))
 
-        SHELL.run("query revealed")
-        nRevealed = len(list(SHELL.getOutput()))
+        SHELL.run("query revealedcount")
+        nRevealed = int(next(SHELL.getOutput()))
 
         nNonMines = nCells - nMines
 
@@ -416,7 +416,7 @@ class RecordWindow:
 
     def recordCategoryString(self):
 
-        SHELL.run("query mines")
+        SHELL.run("query minescount")
         nMines = next(SHELL.getOutput())
 
         SHELL.run("query width")
