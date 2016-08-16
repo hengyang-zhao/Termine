@@ -84,21 +84,14 @@ BUTTON_RESUME   = StyledText(' UNPAUSE ', curses.A_REVERSE, 'white')
 BUTTON_RECORDS  = StyledText(' RECORDS ', curses.A_REVERSE, 'white')
 BUTTON_LEAVE    = StyledText('  LEAVE  ', curses.A_REVERSE, 'white')
 
-TIMER = StyledText(' %s ', curses.A_REVERSE, 'white')
-MINES_REMAINING = StyledText(' %s ', curses.A_REVERSE, 'white')
+STATUS_TIMER = StyledText(' %s ', curses.A_REVERSE, 'white')
+STATUS_MINE_REMAINING = StyledText(' %s ', curses.A_REVERSE, 'white')
 
 # Side pane (log window) properties
 
 LOG_WINDOW_CWIDTH = 20
-SHELL_COMMAND_STYLE = 0
-SHELL_OUTPUT_STYLE = 0
-LOG_MESSAGE_STYLE = 0
-
 LOG_BORDER_CHEIGHT = 1
 LOG_BORDER_CWIDTH = 1
-
-XAXIS_LABEL_STYLE = 0
-YAXIS_LABEL_STYLE = 0
 
 # Record window properties
 

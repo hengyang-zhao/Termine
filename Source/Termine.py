@@ -267,15 +267,15 @@ class StatusWindow:
     def drawStatus(self, clockOnly=False):
         _, cWidth = self._win.getmaxyx()
 
-        timeStr = RC.TIMER.text() % self.clockString()
-        self._win.addstr(1, cWidth - len(timeStr) - 1, timeStr, RC.TIMER.attr())
+        timeStr = RC.STATUS_TIMER.text() % self.clockString()
+        self._win.addstr(1, cWidth - len(timeStr) - 1, timeStr, RC.STATUS_TIMER.attr())
 
         if clockOnly is True: return
 
         cWidth -= len(timeStr) + 1
 
-        progStr = RC.MINES_REMAINING.text() % self.progressString()
-        self._win.addstr(1, cWidth - len(progStr) - 1, progStr, RC.MINES_REMAINING.attr())
+        progStr = RC.STATUS_MINE_REMAINING.text() % self.progressString()
+        self._win.addstr(1, cWidth - len(progStr) - 1, progStr, RC.STATUS_MINE_REMAINING.attr())
 
         cWidth -= len(progStr) + 2
         return cWidth
