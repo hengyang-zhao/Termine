@@ -245,16 +245,16 @@ class StatusWindow:
     def clockString(self):
         elapsed = TIMER.elapsed()
 
-        nmins = elapsed.seconds // 60
-        nsecs = elapsed.seconds % 60
-        ntenth = elapsed.microseconds // 100000
+        nMins = elapsed.seconds // 60
+        nSecs = elapsed.seconds % 60
+        nTenths = elapsed.microseconds // 100000
 
-        if (nmins > 99):
-            nmins = 99
-            nsecs = 99
-            ntenth = 9
+        if (nMins > 99):
+            nMins = 99
+            nSecs = 99
+            nTenths = 9
 
-        return "%02d:%02d.%01d" % (nmins, nsecs, ntenth)
+        return "%02d:%02d.%01d" % (nMins, nSecs, nTenths)
 
     def progressString(self):
         SHELL.run("query flags")
@@ -383,6 +383,20 @@ class LogWindow:
         cHeight, _ = self._win.getmaxyx()
         return cHeight - RC.LOG_BORDER_CHEIGHT * 2
 
+class RecordItem:
+
+    def __init__(self, duration, whenCreated):
+        self.duration = duration
+        self.whenCreated = whenCreated
+
+    def __str__(self):
+        nMins = self.duration.seconds // 60
+        nSecs = self.duration.seconds % 60
+        nTenths = self.duration.microseconds // 100000
+
+        return "%d:%02d.%01d sec (%s)" % (nMins, nSecs, nTenths,
+                self.whenCreated.strftime("%Y/%m/%d %H:%M:%S"))
+
 class RecordWindow:
     def __init__(self):
 
@@ -398,7 +412,7 @@ class RecordWindow:
 
     def updateRecord(self):
         self.flushRecords()
-        self._currentRecord = TIMER.elapsed()
+        self._currentRecord = RecordItem(TIMER.elapsed(), datetime.datetime.now())
 
     def recordCategoryString(self):
 
@@ -442,13 +456,12 @@ class RecordWindow:
         if self._currentRecord is not None:
             dispTable.append((self._currentRecord, True))
 
-        for rec, isCurrent in sorted(dispTable, key=lambda e: e[0]):
+        for rec, isCurrent in sorted(dispTable, key=lambda r: r[0].duration):
             self._win.addstr(cY, cX, "%2d: %s" % (rank, str(rec)),
                     RC.RECORD_CURRENT_STYLE.attr() if isCurrent is True else RC.RECORD_DEFAULT_STYLE.attr())
 
             cY += 1
             rank += 1
-
 
     def drawBorder(self):
         self._win.border()
