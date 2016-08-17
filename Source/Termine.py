@@ -523,6 +523,125 @@ class Timer:
     def isPaused(self):
         return self._whenStarted is not None and self._whenPaused is not None
 
+class GameControl:
+
+    @staticmethod
+    def initGame():
+
+        global MINE_FIELD_WINDOW
+        global STATUS_WINDOW
+        global LOG_WINDOW
+        global RECORD_WINDOW
+        global TIMER
+        global SHELL
+
+        SHELL = Shell.Shell()
+        MINE_FIELD_WINDOW = MineFieldWindow(curses.COLS - RC.LOG_WINDOW_CWIDTH)
+        STATUS_WINDOW = StatusWindow(curses.COLS)
+        LOG_WINDOW = LogWindow(RC.LOG_WINDOW_CWIDTH)
+        RECORD_WINDOW = RecordWindow()
+        TIMER = Timer()
+
+    @staticmethod
+    def initDisplay(screen):
+
+        global ROOT_SCREEN
+
+        ROOT_SCREEN = screen
+
+        if (curses.has_colors()):
+            curses.start_color()
+            curses.use_default_colors()
+
+            curses.init_pair(0, curses.COLOR_BLACK, -1)
+            curses.init_pair(1, curses.COLOR_RED, -1)
+            curses.init_pair(2, curses.COLOR_GREEN, -1)
+            curses.init_pair(3, curses.COLOR_YELLOW, -1)
+            curses.init_pair(4, curses.COLOR_BLUE, -1)
+            curses.init_pair(5, curses.COLOR_MAGENTA, -1)
+            curses.init_pair(6, curses.COLOR_CYAN, -1)
+            curses.init_pair(7, curses.COLOR_WHITE, -1)
+
+        curses.mousemask(curses.BUTTON1_PRESSED | curses.BUTTON3_PRESSED)
+        curses.mouseinterval(0)
+        curses.curs_set(False)
+
+        ROOT_SCREEN.clear()
+
+    @staticmethod
+    def pauseGame():
+        if TIMER.isReset() is True:
+            return
+
+        if TIMER.isRunning() is True:
+            TIMER.pause()
+
+    @staticmethod
+    def unpauseGame():
+        if TIMER.isReset() is True:
+            return
+
+        if TIMER.isPaused() is True:
+            if not MINE_FIELD_WINDOW.isBoomed() and not MINE_FIELD_WINDOW.isFinished():
+                TIMER.resume()
+            return
+
+    @staticmethod
+    def togglePauseGame():
+
+        if TIMER.isRunning() is True:
+            GameControl.pauseGame()
+        else:
+            GameControl.unpauseGame()
+
+    @staticmethod
+    def restartGame():
+
+        mfWidthMax, mfHeightMax = MINE_FIELD_WINDOW.getMaxMineFieldSize()
+        if mfWidthMax >= RC.MINE_FIELD_WIDTH and mfHeightMax >= RC.MINE_FIELD_HEIGHT:
+            shellCmd = "minefield %d %d %d" % (RC.MINE_FIELD_WIDTH, RC.MINE_FIELD_HEIGHT, RC.MINE_FIELD_MINES)
+        else:
+            shellCmd = "minefield %d %d %d" % (mfWidthMax, mfHeightMax, int(mfWidthMax * mfHeightMax * RC.MINE_FIELD_DEFAULT_MINES_PERCENTAGE))
+        SHELL.run(shellCmd)
+        RECORD_WINDOW.flushRecords()
+        TIMER.reset()
+
+    @staticmethod
+    def refreshDisplay():
+
+        ROOT_SCREEN.noutrefresh()
+        MINE_FIELD_WINDOW.updateAll()
+        STATUS_WINDOW.updateAll()
+        LOG_WINDOW.updateAll()
+        RECORD_WINDOW.updateAll()
+        curses.doupdate()
+
+    @staticmethod
+    def isRecordWindowActive():
+        return RECORD_WINDOW.visible is True
+
+    @staticmethod
+    def exit():
+        RECORD_WINDOW.flushRecords()
+        sys.exit(0) 
+
+    @staticmethod
+    def activateRecordWindow():
+        RECORD_WINDOW.visible = True
+
+        GameControl.pauseGame()
+
+    @staticmethod
+    def deactivateRecordWindow():
+        RECORD_WINDOW.visible = False
+
+    @staticmethod
+    def toggleRecordWindow():
+        if GameControl.isRecordWindowActive() is True:
+            GameControl.deactivateRecordWindow()
+        else:
+            GameControl.activateRecordWindow()
+
 class EventLoop:
 
     def mineFieldOnMouseClick(self, mX, mY, btn):
@@ -591,47 +710,19 @@ class EventLoop:
         return False
 
     def newGameButtonOnMouseClick(self):
-        if RECORD_WINDOW.visible is True:
-            return
 
-        RestartGame()
+        GameControl.restartGame()
 
     def pauseGameButtonOnMouseClick(self):
-        if RECORD_WINDOW.visible is True or TIMER.isReset() is True:
-            return
-
-        if TIMER.isPaused() is True:
-            if not MINE_FIELD_WINDOW.isBoomed() and not MINE_FIELD_WINDOW.isFinished():
-                TIMER.resume()
-            return
-
-        if TIMER.isRunning() is True:
-            TIMER.pause()
+        GameControl.togglePauseGame()
 
     def bestRecordButtonOnMouseClick(self):
 
-        if RECORD_WINDOW.visible is True:
-
-            RECORD_WINDOW.visible = False
-
-            if TIMER.isReset() is True:
-                return
-
-            if TIMER.isPaused() is True:
-                if not MINE_FIELD_WINDOW.isBoomed() and not MINE_FIELD_WINDOW.isFinished():
-                    TIMER.resume()
-                return
-
-        else:
-
-            RECORD_WINDOW.visible = True
-
-            if TIMER.isRunning() is True:
-                TIMER.pause()
+        GameControl.toggleRecordWindow()
 
     def leaveButtonOnMouseClick(self):
-        RECORD_WINDOW.flushRecords()
-        sys.exit(0) 
+
+        GameControl.exit()
 
     def run(self):
 
@@ -651,53 +742,32 @@ class EventLoop:
 
                 if self.statusBarOnMouseClick(mX, mY) is True:
 
-                    refreshAll()
+                    GameControl.refreshDisplay()
                     continue
 
                 if self.mineFieldOnMouseClick(mX, mY, btn) is True:
 
-                    refreshAll()
+                    GameControl.refreshDisplay()
                     continue
 
-def refreshAll():
+            elif event == ord('q'):
+                GameControl.exit()
 
-    MINE_FIELD_WINDOW.updateAll()
-    STATUS_WINDOW.updateAll()
-    LOG_WINDOW.updateAll()
-    RECORD_WINDOW.updateAll()
-    curses.doupdate()
+            elif event == ord('n'):
+                GameControl.deactivateRecordWindow()
+                GameControl.restartGame()
+                GameControl.refreshDisplay()
 
-def InitColor():
-    curses.init_pair(0, curses.COLOR_BLACK, -1)
-    curses.init_pair(1, curses.COLOR_RED, -1)
-    curses.init_pair(2, curses.COLOR_GREEN, -1)
-    curses.init_pair(3, curses.COLOR_YELLOW, -1)
-    curses.init_pair(4, curses.COLOR_BLUE, -1)
-    curses.init_pair(5, curses.COLOR_MAGENTA, -1)
-    curses.init_pair(6, curses.COLOR_CYAN, -1)
-    curses.init_pair(7, curses.COLOR_WHITE, -1)
+            elif event == ord('r'):
+                GameControl.toggleRecordWindow()
+                GameControl.refreshDisplay()
 
-def InitCurses():
-
-    if (curses.has_colors()):
-        curses.start_color()
-        curses.use_default_colors()
-        InitColor()
-
-    curses.mousemask(curses.BUTTON1_PRESSED | curses.BUTTON3_PRESSED)
-    curses.mouseinterval(0)
-    curses.curs_set(False)
-
-def RestartGame():
-
-    mfWidthMax, mfHeightMax = MINE_FIELD_WINDOW.getMaxMineFieldSize()
-    if mfWidthMax >= RC.MINE_FIELD_WIDTH and mfHeightMax >= RC.MINE_FIELD_HEIGHT:
-        shellCmd = "minefield %d %d %d" % (RC.MINE_FIELD_WIDTH, RC.MINE_FIELD_HEIGHT, RC.MINE_FIELD_MINES)
-    else:
-        shellCmd = "minefield %d %d %d" % (mfWidthMax, mfHeightMax, int(mfWidthMax * mfHeightMax * RC.MINE_FIELD_DEFAULT_MINES_PERCENTAGE))
-    SHELL.run(shellCmd)
-    RECORD_WINDOW.flushRecords()
-    TIMER.reset()
+            elif event == ord('p'):
+                GameControl.deactivateRecordWindow()
+                GameControl.togglePauseGame()
+                GameControl.refreshDisplay()
+            else:
+                pass
 
 class ClockUpdater(threading.Thread):
 
@@ -709,33 +779,16 @@ class ClockUpdater(threading.Thread):
 
 def Main(stdscr):
 
-    global MINE_FIELD_WINDOW
-    global STATUS_WINDOW
-    global LOG_WINDOW
-    global ROOT_SCREEN
-    global RECORD_WINDOW
-    global TIMER
-    global SHELL
+    GameControl.initDisplay(stdscr)
+    GameControl.initGame()
 
-    InitCurses()
-    stdscr.clear()
-
-    SHELL = Shell.Shell()
-    ROOT_SCREEN = stdscr
-    MINE_FIELD_WINDOW = MineFieldWindow(curses.COLS - RC.LOG_WINDOW_CWIDTH)
-    STATUS_WINDOW = StatusWindow(curses.COLS)
-    LOG_WINDOW = LogWindow(RC.LOG_WINDOW_CWIDTH)
-    RECORD_WINDOW = RecordWindow()
-    TIMER = Timer()
-
-    RestartGame()
+    GameControl.restartGame()
 
     clockUpdater = ClockUpdater()
     clockUpdater.daemon = True
     clockUpdater.start()
 
-    stdscr.refresh()
-    refreshAll()
+    GameControl.refreshDisplay()
     EventLoop().run()
 
 curses.wrapper(Main)
