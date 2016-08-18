@@ -360,9 +360,11 @@ class LogWindow:
         while len(self._logLines) > self._maxLines():
             self._logLines.popleft()
 
+        maxLength = RC.LOG_WINDOW_CWIDTH - RC.LOG_BORDER_CWIDTH * 2
+
         y, x = self._win.getyx()
         for line in self._logLines:
-            self._win.addstr(y + 1, x + 1, line)
+            self._win.addstr(y + 1, x + 1, line[:maxLength])
             y += 1
 
     def drawBorder(self):
