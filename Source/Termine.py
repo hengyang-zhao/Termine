@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
+import argparse
 import curses
 import datetime
 import pickle
 import threading
 import time
 import sys
+import re
 
 from collections import deque
 from collections import OrderedDict
@@ -20,6 +22,7 @@ LOG_WINDOW = None
 TIMER = None
 SHELL = None
 ROOT_SCREEN = None
+ARGUMENTS = None
 
 class MineFieldWindow:
 
@@ -523,7 +526,89 @@ class Timer:
     def isPaused(self):
         return self._whenStarted is not None and self._whenPaused is not None
 
+class Arguments:
+
+    STANDARD_EASY = 0
+    STANDARD_MEDIUM = 1
+    STANDARD_HARD = 2
+
+    class MineFieldSize:
+        def __init__(self, sizeString):
+
+            if sizeString == 'fullscreen':
+                self.isFullScreen = True
+                return
+
+            m = re.match(r'(\d+)x(\d+)', sizeString)
+            if m is None:
+                raise argparse.ArgumentTypeError("Should be in format WxH (example: 10x8) or 'fullscreen'")
+            self._width = int(m.group(1))
+            self._height = int(m.group(2))
+            self.isFullScreen = False
+
+        def __repr__(self):
+            if self.isFullScreen is True:
+                return "fullscreen"
+            else:
+                return "%dx%d" % (self._width, self._height)
+
+        def value(self):
+            if self.isFullScreen is True:
+                return None
+            else:
+                return self._width, self._height
+
+    class MineDensity:
+        def __init__(self, percentString):
+            
+            m = re.match(r'(\d+)%', percentString)
+            if m is None:
+                raise argparse.ArgumentTypeError("Should be in format N% (example: 10%)")
+            self._percent = int(m.group(1))
+
+        def __repr__(self):
+            return "%d%%" % (self._percent)
+
+        def value(self):
+            return self._percent / 100
+
+    def __init__(self):
+        self._parser = argparse.ArgumentParser(description='Termine - A Terminal Based Mine Sweeping Game')
+
+        self._parser.add_argument("--standard", choices=['easy', 'medium', 'hard'], help="standard minefield configurations (easy: 8x8, 10 mines, medium 16x16, 40 mines, hard 30x16, 99 mines)")
+        self._parser.add_argument("--size", type=Arguments.MineFieldSize, default='fullscreen', help="minefield size in format WIDTHxHEIGHT")
+        self._parser.add_argument("--density", type=Arguments.MineDensity, default='15%', help="mines density in format PERCENT%%")
+
+        self._parser.add_argument('-v', '--version', action='version', version='%(prog)s 0.2')
+
+    def fullScreenMineFieldRequested(self):
+        return self._cookedArgs.size.isFullScreen
+
+    def standardDifficulty(self):
+        return {
+                'easy': Arguments.STANDARD_EASY,
+                'medium': Arguments.STANDARD_MEDIUM,
+                'hard': Arguments.STANDARD_HARD
+        }.get(self._cookedArgs.standard, None)
+
+    def mineFieldSize(self):
+        return self._cookedArgs.size.value()
+
+    def minesDensity(self):
+        return self._cookedArgs.density.value()
+
+    def parse(self):
+        self._cookedArgs = self._parser.parse_args()
+
 class GameControl:
+
+    @staticmethod
+    def initArguments():
+
+        global ARGUMENTS
+
+        ARGUMENTS = Arguments()
+        ARGUMENTS.parse()
 
     @staticmethod
     def initGame():
@@ -598,13 +683,49 @@ class GameControl:
     def restartGame():
 
         mfWidthMax, mfHeightMax = MINE_FIELD_WINDOW.getMaxMineFieldSize()
-        if mfWidthMax >= RC.MINE_FIELD_WIDTH and mfHeightMax >= RC.MINE_FIELD_HEIGHT:
-            shellCmd = "minefield %d %d %d" % (RC.MINE_FIELD_WIDTH, RC.MINE_FIELD_HEIGHT, RC.MINE_FIELD_MINES)
+
+        if ARGUMENTS.standardDifficulty() == Arguments.STANDARD_EASY:
+            mfWidth, mfHeight, nMines = 8, 8, 10
+
+        elif ARGUMENTS.standardDifficulty() == Arguments.STANDARD_MEDIUM:
+            mfWidth, mfHeight, nMines = 16, 16, 40
+
+        elif ARGUMENTS.standardDifficulty() == Arguments.STANDARD_HARD:
+            mfWidth, mfHeight, nMines = 30, 16, 99
+
+        elif ARGUMENTS.fullScreenMineFieldRequested():
+            mfWidth, mfHeight = mfWidthMax, mfHeightMax
+            nMines = round(mfWidth * mfHeight * ARGUMENTS.minesDensity())
+
         else:
-            shellCmd = "minefield %d %d %d" % (mfWidthMax, mfHeightMax, int(mfWidthMax * mfHeightMax * RC.MINE_FIELD_DEFAULT_MINES_PERCENTAGE))
-        SHELL.run(shellCmd)
+            mfWidth, mfHeight = ARGUMENTS.mineFieldSize()
+            nMines = round(mfWidth * mfHeight * ARGUMENTS.minesDensity())
+
+        nMinesMax = mfWidth * mfHeight - 9
+
+        if mfWidth > mfWidthMax or mfHeight > mfHeightMax:
+            GameControl.abortWithMessage("Unable to create %d by %d minefield. The current maximum is %d by %d." % (mfWidth, mfHeight, mfWidthMax, mfHeightMax))
+
+        if nMines > nMinesMax:
+            GameControl.abortWithMessage("Unable to deploy %d mines (density %g%%) on %d by %d minefield." % (nMines, ARGUMENTS.minesDensity(), mfWidth, mfHeight))
+
         RECORD_WINDOW.flushRecords()
+
+        shellCmd = "minefield %d %d %d" % (mfWidth, mfHeight, nMines)
+        LOG_WINDOW.push(shellCmd)
+        SHELL.run(shellCmd)
+
+        for o in SHELL.getOutput():
+            LOG_WINDOW.push(o)
+
         TIMER.reset()
+
+    @staticmethod
+    def abortWithMessage(msg):
+
+        curses.endwin()
+        print(msg)
+        sys.exit(1)
 
     @staticmethod
     def refreshDisplay():
@@ -623,7 +744,7 @@ class GameControl:
     @staticmethod
     def exit():
         RECORD_WINDOW.flushRecords()
-        sys.exit(0) 
+        sys.exit(0)
 
     @staticmethod
     def activateRecordWindow():
@@ -777,9 +898,9 @@ class ClockUpdater(threading.Thread):
             curses.doupdate()
             time.sleep(0.1)
 
-def Main(stdscr):
+def Main(screen):
 
-    GameControl.initDisplay(stdscr)
+    GameControl.initDisplay(screen)
     GameControl.initGame()
 
     GameControl.restartGame()
@@ -791,4 +912,8 @@ def Main(stdscr):
     GameControl.refreshDisplay()
     EventLoop().run()
 
-curses.wrapper(Main)
+if __name__ == '__main__':
+
+    GameControl.initArguments()
+
+    curses.wrapper(Main)
