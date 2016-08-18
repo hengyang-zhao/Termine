@@ -575,9 +575,10 @@ class Arguments:
     def __init__(self):
         self._parser = argparse.ArgumentParser(description='Termine - A Terminal Based Mine Sweeping Game')
 
-        self._parser.add_argument("--standard", choices=['easy', 'medium', 'hard'], help="standard minefield configurations (easy: 8x8, 10 mines, medium 16x16, 40 mines, hard 30x16, 99 mines)")
-        self._parser.add_argument("--size", type=Arguments.MineFieldSize, default='fullscreen', help="minefield size in format WIDTHxHEIGHT")
-        self._parser.add_argument("--density", type=Arguments.MineDensity, default='15%', help="mines density in format PERCENT%%")
+        self._parser.add_argument("-S", "--standard", choices=['easy', 'medium', 'hard'], help="standard minefield configurations (easy: 8x8, 10 mines, medium 16x16, 40 mines, hard 30x16, 99 mines)")
+        self._parser.add_argument("-s", "--size", type=Arguments.MineFieldSize, default='fullscreen', help="minefield size in format WIDTHxHEIGHT")
+        self._parser.add_argument("-d", "--density", type=Arguments.MineDensity, default='15%', help="mines density in format PERCENT%%")
+        self._parser.add_argument("-R", "--dump-record", action='store_true')
 
         self._parser.add_argument('-v', '--version', action='version', version='%(prog)s 0.2')
 
@@ -599,6 +600,10 @@ class Arguments:
 
     def parse(self):
         self._cookedArgs = self._parser.parse_args()
+
+        if self._cookedArgs.dump_record is True:
+            GameControl.dumpRecord()
+            GameControl.exit()
 
 class GameControl:
 
@@ -626,6 +631,25 @@ class GameControl:
         LOG_WINDOW = LogWindow(RC.LOG_WINDOW_CWIDTH)
         RECORD_WINDOW = RecordWindow()
         TIMER = Timer()
+
+    @staticmethod
+    def dumpRecord():
+
+        try:
+            with open(RC.RECORD_FILE_PATH, 'rb') as recFile:
+                recordBook = pickle.load(recFile)
+        except:
+            recordBook = {}
+
+        for title, records in recordBook.items():
+            print("<><><> %s <><><>" % title)
+            
+            rank = 1
+            for rec in sorted(records, key=lambda r: r.duration):
+                print("%4d: %s" % (rank, rec))
+                rank += 1
+
+            print()
 
     @staticmethod
     def initDisplay(screen):
@@ -743,7 +767,8 @@ class GameControl:
 
     @staticmethod
     def exit():
-        RECORD_WINDOW.flushRecords()
+        if RECORD_WINDOW is not None:
+            RECORD_WINDOW.flushRecords()
         sys.exit(0)
 
     @staticmethod
