@@ -450,7 +450,7 @@ class RecordWindow:
 
     def drawRecords(self):
         cX, cY = 1, 1
-        _, cHeight = self._win.getmaxyx()
+        cHeight, _ = self._win.getmaxyx()
         rankMax = cHeight - 2
         rank = 1
 
@@ -462,6 +462,10 @@ class RecordWindow:
             dispTable.append((self._currentRecord, True))
 
         for rec, isCurrent in sorted(dispTable, key=lambda r: r[0].duration):
+
+            if rank > rankMax:
+                break
+
             self._win.addstr(cY, cX, "%2d: %s" % (rank, str(rec)),
                     RC.RECORD_CURRENT_STYLE.attr() if isCurrent is True else RC.RECORD_DEFAULT_STYLE.attr())
 
