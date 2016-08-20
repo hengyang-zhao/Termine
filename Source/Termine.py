@@ -26,9 +26,14 @@ ARGUMENTS = None
 
 class MineFieldWindow:
 
-    def __init__(self, width):
+    def __init__(self):
 
-        self._win = curses.newwin(curses.LINES - 3, width, 0, 0)
+        self.resize()
+
+    def resize(self):
+
+        rootCWidth, rootCHeight = GameControl.safeTerminalSize()
+        self._win = curses.newwin(rootCHeight - 3, rootCWidth - RC.LOG_WINDOW_CWIDTH, 0, 0)
 
     def getMaxMineFieldSize(self):
 
@@ -37,6 +42,12 @@ class MineFieldWindow:
         mfHeight = (cHeight - (RC.MINE_FIELD_MARGIN_CHEIGHT + RC.MINE_FIELD_BORDER_CHEIGHT) * 2 - 1) // (RC.MINE_FIELD_CELL_CHEIGHT + 1)
 
         return mfWidth, mfHeight
+
+    def isAbleToDrawMineField(self):
+        mfWidthMax, mfHeightMax = self.getMaxMineFieldSize()
+        mfWidth, mfHeight = self.currentMineFieldSize()
+
+        return mfWidth <= mfWidthMax and mfHeight <= mfHeightMax
 
     def drawBorder(self):
         self._win.border()
@@ -54,11 +65,18 @@ class MineFieldWindow:
     def updateAll(self):
 
         self._win.erase()
+
+        if self.isAbleToDrawMineField():
+            self.drawMineField()
+
         self.drawBorder()
-        self.drawMineField()
+
         self._win.noutrefresh()
 
     def retrieveMineFieldCoordinate(self, cX, cY):
+
+        if self.isAbleToDrawMineField() is False:
+            return None
 
         xCStart, yCStart = self._mineFieldXYCStart()
         xCEnd, yCEnd = self._mineFieldYXCEnd()
@@ -226,8 +244,13 @@ class StatusWindow:
     BUTTON_RECORDS = 2
     BUTTON_LEAVE = 3
 
-    def __init__(self, width):
-        self._win = curses.newwin(3, width, curses.LINES - 3, 0)
+    def __init__(self):
+
+        self.resize()
+
+    def resize(self):
+        rootCWidth, rootCHeight = GameControl.safeTerminalSize()
+        self._win = curses.newwin(3, rootCWidth, rootCHeight - 3, 0)
 
     def _buttons(self):
         if TIMER.isPaused() and not MINE_FIELD_WINDOW.isFinished() and not MINE_FIELD_WINDOW.isBoomed():
@@ -319,7 +342,10 @@ class StatusWindow:
         self._win.addstr(1, progBarCEnd - 1 - len(percent), percent)
 
     def retrieveClickedButton(self, cX, cY):
-        if cY != curses.LINES - 2:
+
+        _, rootCHeight = GameControl.safeTerminalSize()
+
+        if cY != rootCHeight - 2:
             return None
 
         cStart = 1
@@ -344,10 +370,15 @@ class StatusWindow:
 
 class LogWindow:
 
-    def __init__(self, width):
+    def __init__(self):
 
-        self._win = curses.newwin(curses.LINES - 3, width, 0, curses.COLS - width)
+        self.resize()
         self._logLines = deque()
+
+    def resize(self):
+
+        rootCWidth, rootCHeight = GameControl.safeTerminalSize()
+        self._win = curses.newwin(rootCHeight - 3, RC.LOG_WINDOW_CWIDTH, 0, rootCWidth - RC.LOG_WINDOW_CWIDTH)
 
     def push(self, s):
 
@@ -405,15 +436,22 @@ class RecordItem:
 class RecordWindow:
     def __init__(self):
 
-        xCStart = (curses.COLS - RC.RECORD_WINDOW_CWIDTH) // 2
-        yCStart = (curses.LINES - RC.RECORD_WINDOW_CHEIGHT) // 2
-        self._win = curses.newwin(RC.RECORD_WINDOW_CHEIGHT, RC.RECORD_WINDOW_CWIDTH, yCStart, xCStart)
-        self._backWin = curses.newwin(RC.RECORD_WINDOW_CHEIGHT + 2, RC.RECORD_WINDOW_CWIDTH + 2, yCStart - 1, xCStart - 1)
         self._records = {}
         self._currentRecord = None
         self.loadRecords()
 
+        self.resize()
+
         self.visible = False
+
+    def resize(self):
+        rootCWidth, rootCHeight = GameControl.safeTerminalSize()
+
+        xCStart = (rootCWidth - RC.RECORD_WINDOW_CWIDTH) // 2
+        yCStart = (rootCHeight - RC.RECORD_WINDOW_CHEIGHT) // 2
+
+        self._win = curses.newwin(RC.RECORD_WINDOW_CHEIGHT, RC.RECORD_WINDOW_CWIDTH, yCStart, xCStart)
+        self._backWin = curses.newwin(RC.RECORD_WINDOW_CHEIGHT + 2, RC.RECORD_WINDOW_CWIDTH + 2, yCStart - 1, xCStart - 1)
 
     def updateRecord(self):
         self.flushRecords()
@@ -632,11 +670,11 @@ class GameControl:
         global SHELL
 
         SHELL = Shell.Shell()
-        MINE_FIELD_WINDOW = MineFieldWindow(curses.COLS - RC.LOG_WINDOW_CWIDTH)
-        STATUS_WINDOW = StatusWindow(curses.COLS)
-        LOG_WINDOW = LogWindow(RC.LOG_WINDOW_CWIDTH)
-        RECORD_WINDOW = RecordWindow()
         TIMER = Timer()
+        STATUS_WINDOW = StatusWindow()
+        LOG_WINDOW = LogWindow()
+        RECORD_WINDOW = RecordWindow()
+        MINE_FIELD_WINDOW = MineFieldWindow()
 
     @staticmethod
     def dumpRecord():
@@ -658,11 +696,35 @@ class GameControl:
             print()
 
     @staticmethod
+    def terminalSize():
+        if ROOT_SCREEN is None:
+            return curses.COLS, curses.LINES
+        else:
+            rootCHeight, rootCWidth = ROOT_SCREEN.getmaxyx()
+            return rootCWidth, rootCHeight
+
+    @staticmethod
+    def safeTerminalSize():
+        rootCWidth, rootCHeight = GameControl.terminalSize()
+        if rootCWidth < RC.TERM_CWIDTH_LIMIT:
+            rootCWidth = RC.TERM_CWIDTH_LIMIT
+
+        if rootCHeight < RC.TERM_CHEIGHT_LIMIT:
+            rootCHeight = RC.TERM_CHEIGHT_LIMIT
+
+        return rootCWidth, rootCHeight
+
+    @staticmethod
     def initDisplay(screen):
 
         global ROOT_SCREEN
 
         ROOT_SCREEN = screen
+
+        rootCWidth, rootCHeight = GameControl.terminalSize()
+        if rootCHeight < RC.TERM_CHEIGHT_LIMIT or rootCWidth < RC.TERM_CWIDTH_LIMIT:
+            GameControl.abortWithMessage("Terminal size %d by %d is too small. (Should be at least %d by %d)" % (
+                rootCWidth, rootCHeight, RC.TERM_CWIDTH_LIMIT, RC.TERM_CHEIGHT_LIMIT))
 
         if (curses.has_colors()):
             curses.start_color()
@@ -694,6 +756,9 @@ class GameControl:
     @staticmethod
     def unpauseGame():
         if TIMER.isReset() is True:
+            return
+
+        if MINE_FIELD_WINDOW.isAbleToDrawMineField() is False:
             return
 
         if TIMER.isPaused() is True:
@@ -793,6 +858,16 @@ class GameControl:
             GameControl.deactivateRecordWindow()
         else:
             GameControl.activateRecordWindow()
+
+    @staticmethod
+    def resizeWindows():
+        MINE_FIELD_WINDOW.resize()
+        STATUS_WINDOW.resize()
+        RECORD_WINDOW.resize()
+        LOG_WINDOW.resize()
+
+        if MINE_FIELD_WINDOW.isAbleToDrawMineField() is False:
+            GameControl.pauseGame()
 
 class EventLoop:
 
@@ -918,6 +993,11 @@ class EventLoop:
                 GameControl.deactivateRecordWindow()
                 GameControl.togglePauseGame()
                 GameControl.refreshDisplay()
+
+            elif event == curses.KEY_RESIZE:
+                GameControl.resizeWindows()
+                GameControl.refreshDisplay()
+
             else:
                 pass
 

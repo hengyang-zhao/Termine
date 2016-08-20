@@ -47,7 +47,7 @@ CELL_DIGIT_1    = StyledText(' 1 ', curses.A_BOLD, 'blue')
 CELL_DIGIT_2    = StyledText(' 2 ', 0, 'green')
 CELL_DIGIT_3    = StyledText(' 3 ', curses.A_BOLD, 'red')
 CELL_DIGIT_4    = StyledText(' 4 ', curses.A_BOLD, 'magenta')
-CELL_DIGIT_5    = StyledText(' 5 ', 0, 'red')
+CELL_DIGIT_5    = StyledText(' 5 ', curses.A_DIM, 'red')
 CELL_DIGIT_6    = StyledText(' 6 ', 0, 'cyan')
 CELL_DIGIT_7    = StyledText(' 7 ', 0, 'yellow')
 CELL_DIGIT_8    = StyledText(' 8 ', curses.A_BOLD, 'white')
@@ -100,4 +100,7 @@ RECORD_WINDOW_CHEIGHT = 12
 RECORD_FILE_PATH = os.path.sep.join([os.environ['HOME'], '.termine_records'])
 RECORD_CURRENT_STYLE = Style(curses.A_BOLD, 'green')
 RECORD_DEFAULT_STYLE = Style(0, 'white')
+
+TERM_CWIDTH_LIMIT = 80
+TERM_CHEIGHT_LIMIT = 25
 
