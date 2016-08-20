@@ -62,12 +62,24 @@ class MineFieldWindow:
         cX += len(title)
         self._win.addch(0, cX, curses.ACS_LTEE)
 
+    def drawTooSmallMineField(self):
+
+        msgLength = len(RC.MINE_FIELD_TOO_SMALL_MESSAGE.text())
+
+        cHeight, cWidth = self._win.getmaxyx()
+
+        self._win.addstr(cHeight // 2, (cWidth - msgLength) // 2,
+                RC.MINE_FIELD_TOO_SMALL_MESSAGE.text(),
+                RC.MINE_FIELD_TOO_SMALL_MESSAGE.attr())
+
     def updateAll(self):
 
         self._win.erase()
 
-        if self.isAbleToDrawMineField():
+        if self.isAbleToDrawMineField() is True:
             self.drawMineField()
+        else:
+            self.drawTooSmallMineField()
 
         self.drawBorder()
 
