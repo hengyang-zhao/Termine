@@ -96,7 +96,7 @@ class MineFieldWindow:
         if cX < xCStart or cY < yCStart or cX >= xCEnd or cY >= yCEnd or (cX - xCStart) % (RC.MINE_FIELD_CELL_CWIDTH + 1) == 0 or (cY - yCStart) % (RC.MINE_FIELD_CELL_CHEIGHT + 1) == 0:
             return None
 
-        return (cX - xCStart) // 4, (cY - yCStart) // 2
+        return (cX - xCStart) // (1 + RC.MINE_FIELD_CELL_CWIDTH), (cY - yCStart) // (1 + RC.MINE_FIELD_CELL_CHEIGHT)
 
     def drawMineField(self):
 
@@ -173,7 +173,13 @@ class MineFieldWindow:
         else:
             cell = self.cellAt(mfX, mfY)
 
-        self._win.addstr(yCStart + mfY * (RC.MINE_FIELD_CELL_CHEIGHT + 1) + 1, xCStart + mfX * (RC.MINE_FIELD_CELL_CWIDTH + 1) + 1, cell.text(), cell.attr())
+        for i in range(RC.MINE_FIELD_CELL_CHEIGHT):
+
+            self._win.addstr(yCStart + mfY * (RC.MINE_FIELD_CELL_CHEIGHT + 1) + 1 + i,
+                    xCStart + mfX * (RC.MINE_FIELD_CELL_CWIDTH + 1) + 1,
+                    cell.text() if i == RC.MINE_FIELD_CELL_CHEIGHT // 2 else cell.padding(),
+                    cell.attr())
+
 
     def currentMineFieldSize(self):
 
