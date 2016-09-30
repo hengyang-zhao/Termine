@@ -12,7 +12,7 @@ import re
 from collections import deque
 from collections import OrderedDict
 
-import RC
+import Styles
 import Shell
 
 MINE_FIELD_WINDOW = None
@@ -23,6 +23,7 @@ TIMER = None
 SHELL = None
 ROOT_SCREEN = None
 ARGUMENTS = None
+RC = None
 
 class MineFieldWindow:
 
@@ -594,6 +595,21 @@ class Arguments:
     STANDARD_MEDIUM = 1
     STANDARD_HARD = 2
 
+    class MineFieldCellSize:
+        def __init__(self, sizeString):
+
+            m = re.match(r'(\d+)x(\d+)', sizeString)
+            if m is None:
+                raise argparse.ArgumentTypeError("Should be in format WxH (example: 10x8) or 'fullscreen'")
+            self._width = int(m.group(1))
+            self._height = int(m.group(2))
+
+        def __repr__(self):
+            return "%dx%d" % (self._width, self._height)
+
+        def value(self):
+            return self._width, self._height
+
     class MineFieldSize:
         def __init__(self, sizeString):
 
@@ -639,6 +655,7 @@ class Arguments:
 
         self._parser.add_argument("-S", "--standard", choices=['easy', 'medium', 'hard'], help="standard minefield configurations (easy: 8x8, 10 mines, medium 16x16, 40 mines, hard 30x16, 99 mines)")
         self._parser.add_argument("-s", "--size", type=Arguments.MineFieldSize, default='fullscreen', help="minefield size in format WIDTHxHEIGHT")
+        self._parser.add_argument("-t", "--cell-size", type=Arguments.MineFieldCellSize, default='5x3', help="mine cell size (in characters) in format WIDTHxHEIGHT")
         self._parser.add_argument("-d", "--density", type=Arguments.MineDensity, default='15%', help="mines density in format PERCENT%%")
         self._parser.add_argument("-R", "--dump-record", action='store_true')
 
@@ -656,6 +673,9 @@ class Arguments:
 
     def mineFieldSize(self):
         return self._cookedArgs.size.value()
+
+    def mineFieldCellCSize(self):
+        return self._cookedArgs.cell_size.value()
 
     def minesDensity(self):
         return self._cookedArgs.density.value()
@@ -678,6 +698,18 @@ class GameControl:
         ARGUMENTS.parse()
 
     @staticmethod
+    def initRC():
+
+        global RC
+
+        mfCellCWdith, mfCellCHeight = ARGUMENTS.mineFieldCellCSize()
+
+        RC = Styles.RCProvider(
+                mineFieldCellCWidth=mfCellCWdith,
+                mineFieldCellCHeight=mfCellCHeight
+                )
+
+    @staticmethod
     def initGame():
 
         global MINE_FIELD_WINDOW
@@ -686,7 +718,6 @@ class GameControl:
         global RECORD_WINDOW
         global TIMER
         global SHELL
-
         SHELL = Shell.Shell()
         TIMER = Timer()
         STATUS_WINDOW = StatusWindow()
@@ -1044,5 +1075,7 @@ def Main(screen):
 if __name__ == '__main__':
 
     GameControl.initArguments()
+    print(ARGUMENTS._cookedArgs)
+    GameControl.initRC()
 
     curses.wrapper(Main)
