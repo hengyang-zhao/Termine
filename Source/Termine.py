@@ -595,14 +595,20 @@ class Arguments:
     STANDARD_MEDIUM = 1
     STANDARD_HARD = 2
 
-    class MineFieldCellSize:
+    class MineFieldCellCSize:
         def __init__(self, sizeString):
 
             m = re.match(r'(\d+)x(\d+)', sizeString)
             if m is None:
-                raise argparse.ArgumentTypeError("Should be in format WxH (example: 10x8) or 'fullscreen'")
+                raise argparse.ArgumentTypeError("Should be in format WxH (example: 5x3)")
             self._width = int(m.group(1))
             self._height = int(m.group(2))
+
+            self._checkValues()
+
+        def _checkValues(self):
+            if self._width < 1 or self._height < 1:
+                raise argparse.ArgumentTypeError("MineField cell size should be at least 1x1")
 
         def __repr__(self):
             return "%dx%d" % (self._width, self._height)
@@ -624,6 +630,12 @@ class Arguments:
             self._height = int(m.group(2))
             self.isFullScreen = False
 
+            self._checkValues()
+
+        def _checkValues(self):
+            if self._width < 4 or self._height < 4:
+                raise argparse.ArgumentTypeError("MineField size should be at least 4x4")
+
         def __repr__(self):
             if self.isFullScreen is True:
                 return "fullscreen"
@@ -643,6 +655,11 @@ class Arguments:
             if m is None:
                 raise argparse.ArgumentTypeError("Should be in format N% (example: 10%)")
             self._percent = int(m.group(1))
+            self._checkValues()
+
+        def _checkValues(self):
+            if self._percent < 0 or self._percent > 100:
+                raise argparse.ArgumentTypeError("Mine density should be in range 0% ~ 100%")
 
         def __repr__(self):
             return "%d%%" % (self._percent)
@@ -655,7 +672,7 @@ class Arguments:
 
         self._parser.add_argument("-S", "--standard", choices=['easy', 'medium', 'hard'], help="standard minefield configurations (easy: 8x8, 10 mines, medium 16x16, 40 mines, hard 30x16, 99 mines)")
         self._parser.add_argument("-s", "--size", type=Arguments.MineFieldSize, default='fullscreen', help="minefield size in format WIDTHxHEIGHT")
-        self._parser.add_argument("-t", "--cell-size", type=Arguments.MineFieldCellSize, default='5x3', help="mine cell size (in characters) in format WIDTHxHEIGHT")
+        self._parser.add_argument("-t", "--cell-size", type=Arguments.MineFieldCellCSize, default='5x3', help="mine cell size (in characters) in format WIDTHxHEIGHT")
         self._parser.add_argument("-d", "--density", type=Arguments.MineDensity, default='15%', help="mines density in format PERCENT%%")
         self._parser.add_argument("-R", "--dump-record", action='store_true')
 
@@ -851,7 +868,7 @@ class GameControl:
             GameControl.abortWithMessage("Unable to create %d by %d minefield. The current maximum is %d by %d." % (mfWidth, mfHeight, mfWidthMax, mfHeightMax))
 
         if nMines > nMinesMax:
-            GameControl.abortWithMessage("Unable to deploy %d mines (density %g%%) on %d by %d minefield." % (nMines, ARGUMENTS.minesDensity(), mfWidth, mfHeight))
+            GameControl.abortWithMessage("Unable to deploy %d mines (density %g%%) on %d by %d minefield." % (nMines, ARGUMENTS.minesDensity() * 100, mfWidth, mfHeight))
 
         RECORD_WINDOW.flushRecords()
 
@@ -1075,7 +1092,6 @@ def Main(screen):
 if __name__ == '__main__':
 
     GameControl.initArguments()
-    print(ARGUMENTS._cookedArgs)
     GameControl.initRC()
 
     curses.wrapper(Main)
