@@ -1,29 +1,30 @@
 import curses
 
-def cursesColor(colorStr):
-    if colorStr is None:
-        return 0
-
-    colorStr = colorStr.lower()
-    colorDict = {
-            'red': 1,
-            'green': 2,
-            'yellow': 3,
-            'blue': 4,
-            'magenta': 5,
-            'cyan': 6,
-            'white': 7
-    }
-    return curses.color_pair(colorDict[colorStr])
-
 class Style:
 
     def __init__(self, style=None, color=None):
         self._style = 0 if style is None else style
         self._color = color
 
+    def _cursesColor(self, colorStr):
+        if colorStr is None:
+            return 0
+
+        colorStr = colorStr.lower()
+        colorDict = {
+                'red': 1,
+                'green': 2,
+                'yellow': 3,
+                'blue': 4,
+                'magenta': 5,
+                'cyan': 6,
+                'white': 7
+        }
+        return curses.color_pair(colorDict[colorStr])
+
+
     def attr(self):
-        return self._style | cursesColor(self._color)
+        return self._style | self._cursesColor(self._color)
 
 class StyledText:
 

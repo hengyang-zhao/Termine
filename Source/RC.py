@@ -24,7 +24,7 @@ MINE_FIELD_WIDTH = 30
 MINE_FIELD_MINES = 99
 MINE_FIELD_DEFAULT_MINES_PERCENTAGE = 0.16
 
-CELL_PAUSED     = MineCellText(' ~ ', curses.A_DIM | curses.A_REVERSE, 'white')
+CELL_PAUSED     = MineCellText(' ~ ', MINE_FIELD_CELL_CWIDTH, curses.A_DIM | curses.A_REVERSE, 'white')
 
 CELL_DIGIT_NONE = MineCellText('   ', MINE_FIELD_CELL_CWIDTH, 0)
 CELL_DIGIT_1    = MineCellText(' 1 ', MINE_FIELD_CELL_CWIDTH, curses.A_BOLD, 'blue')
