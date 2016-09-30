@@ -70,6 +70,7 @@ class RCProvider:
         self.MINE_FIELD_BORDER_CHEIGHT = 1
         self.MINE_FIELD_BORDER_CWIDTH = 1
         self.MINE_FIELD_BORDER_DEFAULT_STYLE = Style()
+        self.MINE_FIELD_BORDER_FOCUSED_STYLE = Style(curses.A_REVERSE, 'white')
         self.MINE_FIELD_BORDER_BOOMED_STYLE = Style(curses.A_DIM, 'red')
         self.MINE_FIELD_BORDER_FINISHED_STYLE = Style(curses.A_DIM, 'green')
 

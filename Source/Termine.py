@@ -29,7 +29,23 @@ class MineFieldWindow:
 
     def __init__(self):
 
+        self._cursorX = 0
+        self._cursorY = 0
+
         self.resize()
+
+    def getCursor(self):
+        return self._cursorX, self._cursorY
+
+    def translateCursor(self, dx, dy):
+        newX = self._cursorX + dx
+        newY = self._cursorY + dy
+
+        xMax, yMax = self.currentMineFieldSize()
+        if newX < 0 or newX >= xMax or newY < 0 or newY >= yMax:
+            return
+
+        self._cursorX, self._cursorY = newX, newY
 
     def resize(self):
 
@@ -105,7 +121,11 @@ class MineFieldWindow:
 
         for mfX in range(mfWidth):
             for mfY in range(mfHeight):
+                if mfX == self._cursorX and mfY == self._cursorY:
+                    continue
                 self.drawMineCell(mfX, mfY)
+
+        self.drawMineCell(self._cursorX, self._cursorY)
 
     def drawMineCell(self, mfX, mfY):
 
@@ -152,6 +172,8 @@ class MineFieldWindow:
             borderStyle = RC.MINE_FIELD_BORDER_BOOMED_STYLE.attr()
         elif self.isFinished():
             borderStyle = RC.MINE_FIELD_BORDER_FINISHED_STYLE.attr()
+        elif mfX == self._cursorX and mfY == self._cursorY:
+            borderStyle = RC.MINE_FIELD_BORDER_FOCUSED_STYLE.attr()
         else:
             borderStyle = RC.MINE_FIELD_BORDER_DEFAULT_STYLE.attr()
 
@@ -235,6 +257,7 @@ class MineFieldWindow:
             return RC.CELL_UNFLAGGED_MINE
         else:
             raise Exception("Unknown cell type: %s" % cell)
+
 
     def _mineFieldXYCStart(self):
 
@@ -903,6 +926,16 @@ class GameControl:
         return RECORD_WINDOW.visible is True
 
     @staticmethod
+    def isMineFieldResponsive():
+        if TIMER.isRunning() is True:
+            return True
+
+        if TIMER.isReset() is True and GameControl.isRecordWindowActive() is False:
+            return True
+
+        return False
+
+    @staticmethod
     def exit():
         if RECORD_WINDOW is not None:
             RECORD_WINDOW.flushRecords()
@@ -947,34 +980,44 @@ class EventLoop:
         if coor is None:
             return False
 
+        x, y = coor
+
         if btn == curses.BUTTON1_PRESSED:
-
-            if TIMER.isReset():
-                TIMER.start()
-
-            x, y = coor
-            LOG_WINDOW.push("poke %d %d" % (x, y))
-            SHELL.run("poke %d %d" % (x, y))
-            for line in SHELL.getOutput():
-                LOG_WINDOW.push(line)
-
-            if MINE_FIELD_WINDOW.isBoomed() or MINE_FIELD_WINDOW.isFinished():
-                TIMER.pause()
-
-            if MINE_FIELD_WINDOW.isFinished():
-                RECORD_WINDOW.updateRecord()
-                self.bestRecordButtonOnMouseClick()
+            self.pokeCellOnMineField(x, y)
 
         elif btn == curses.BUTTON3_PRESSED:
-            x, y = coor
-            LOG_WINDOW.push("toggle %d %d" % (x, y))
-            SHELL.run("toggle %d %d" % (x, y))
-            for line in SHELL.getOutput():
-                LOG_WINDOW.push(line)
+            self.toggleCellOnMineField(x, y)
+
         else:
             pass
 
         return True
+
+    def pokeCellOnMineField(self, x, y):
+
+        if TIMER.isReset():
+            TIMER.start()
+
+
+        LOG_WINDOW.push("poke %d %d" % (x, y))
+        SHELL.run("poke %d %d" % (x, y))
+        for line in SHELL.getOutput():
+            LOG_WINDOW.push(line)
+
+        if MINE_FIELD_WINDOW.isBoomed() or MINE_FIELD_WINDOW.isFinished():
+            TIMER.pause()
+
+        if MINE_FIELD_WINDOW.isFinished():
+            RECORD_WINDOW.updateRecord()
+            self.bestRecordButtonOnMouseClick()
+
+    def toggleCellOnMineField(self, x, y):
+
+        LOG_WINDOW.push("toggle %d %d" % (x, y))
+        SHELL.run("toggle %d %d" % (x, y))
+        for line in SHELL.getOutput():
+            LOG_WINDOW.push(line)
+
 
     def statusBarOnMouseClick(self, mX, mY):
 
@@ -1058,6 +1101,44 @@ class EventLoop:
             elif event == ord('p'):
                 GameControl.deactivateRecordWindow()
                 GameControl.togglePauseGame()
+                GameControl.refreshDisplay()
+
+            elif event == ord(' '):
+                if GameControl.isMineFieldResponsive() is True:
+                    x, y = MINE_FIELD_WINDOW.getCursor()
+                    self.pokeCellOnMineField(x, y)
+
+                GameControl.refreshDisplay()
+
+            elif event == ord('f'):
+                if GameControl.isMineFieldResponsive() is True:
+                    x, y = MINE_FIELD_WINDOW.getCursor()
+                    self.toggleCellOnMineField(x, y)
+
+                GameControl.refreshDisplay()
+
+            elif event == curses.KEY_LEFT:
+                if GameControl.isMineFieldResponsive() is True:
+                    MINE_FIELD_WINDOW.translateCursor(-1, 0)
+
+                GameControl.refreshDisplay()
+
+            elif event == curses.KEY_RIGHT:
+                if GameControl.isMineFieldResponsive() is True:
+                    MINE_FIELD_WINDOW.translateCursor(1, 0)
+
+                GameControl.refreshDisplay()
+
+            elif event == curses.KEY_UP:
+                if GameControl.isMineFieldResponsive() is True:
+                    MINE_FIELD_WINDOW.translateCursor(0, -1)
+
+                GameControl.refreshDisplay()
+
+            elif event == curses.KEY_DOWN:
+                if GameControl.isMineFieldResponsive() is True:
+                    MINE_FIELD_WINDOW.translateCursor(0, 1)
+
                 GameControl.refreshDisplay()
 
             elif event == curses.KEY_RESIZE:
