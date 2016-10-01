@@ -43,9 +43,10 @@ class MineFieldWindow:
 
         xMax, yMax = self.currentMineFieldSize()
         if newX < 0 or newX >= xMax or newY < 0 or newY >= yMax:
-            return
+            if RC.MINE_FIELD_ALLOW_CURSOR_WRAP is False:
+                return
 
-        self._cursorX, self._cursorY = newX, newY
+        self._cursorX, self._cursorY = newX % xMax, newY % yMax
 
     def resize(self):
 
