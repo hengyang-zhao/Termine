@@ -174,6 +174,10 @@ class MineFieldWindow:
             borderStyle = RC.MINE_FIELD_BORDER_FINISHED_STYLE.attr()
         elif mfX == self._cursorX and mfY == self._cursorY:
             borderStyle = RC.MINE_FIELD_BORDER_FOCUSED_STYLE.attr()
+            ulCorner = curses.ACS_ULCORNER
+            urCorner = curses.ACS_URCORNER
+            llCorner = curses.ACS_LLCORNER
+            lrCorner = curses.ACS_LRCORNER
         else:
             borderStyle = RC.MINE_FIELD_BORDER_DEFAULT_STYLE.attr()
 
