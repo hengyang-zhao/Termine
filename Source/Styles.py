@@ -70,7 +70,7 @@ class RCProvider:
         self.MINE_FIELD_BORDER_CHEIGHT = 1
         self.MINE_FIELD_BORDER_CWIDTH = 1
         self.MINE_FIELD_BORDER_DEFAULT_STYLE = Style()
-        self.MINE_FIELD_BORDER_FOCUSED_STYLE = Style(curses.A_REVERSE, 'white')
+        self.MINE_FIELD_BORDER_FOCUSED_STYLE = Style(curses.A_BOLD | curses.A_REVERSE, 'white')
         self.MINE_FIELD_BORDER_BOOMED_STYLE = Style(curses.A_DIM, 'red')
         self.MINE_FIELD_BORDER_FINISHED_STYLE = Style(curses.A_DIM, 'green')
 
@@ -80,6 +80,8 @@ class RCProvider:
         self.MINE_FIELD_WIDTH = 30
         self.MINE_FIELD_MINES = 99
         self.MINE_FIELD_DEFAULT_MINES_PERCENTAGE = 0.16
+
+        self.MINE_FIELD_ALLOW_CURSOR_WRAP = True
 
         self.CELL_PAUSED     = MineCellText(' ~ ', self.MINE_FIELD_CELL_CWIDTH, curses.A_DIM | curses.A_REVERSE, 'white')
 
