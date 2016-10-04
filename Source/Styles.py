@@ -81,7 +81,7 @@ class RCProvider:
         self.MINE_FIELD_MINES = 99
         self.MINE_FIELD_DEFAULT_MINES_PERCENTAGE = 0.16
 
-        self.MINE_FIELD_ALLOW_CURSOR_WRAP = True
+        self.MINE_FIELD_ALLOW_CURSOR_WRAP = False
 
         self.CELL_PAUSED     = MineCellText(' ~ ', self.MINE_FIELD_CELL_CWIDTH, curses.A_DIM | curses.A_REVERSE, 'white')
 
