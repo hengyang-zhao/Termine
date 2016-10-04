@@ -32,10 +32,22 @@ class MineFieldWindow:
         self._cursorX = 0
         self._cursorY = 0
 
+        self._isCursorVisible = False
+
         self.resize()
 
+    def toggleCursorVisible(self):
+        self._isCursorVisible = not self._isCursorVisible
+
+    def isCursorVisible(self):
+        return self._isCursorVisible is True
+
     def getCursor(self):
-        return self._cursorX, self._cursorY
+        if self._isCursorVisible is True:
+            return self._cursorX, self._cursorY
+
+        else:
+            return None
 
     def translateCursor(self, dx, dy):
         newX = self._cursorX + dx
@@ -172,7 +184,7 @@ class MineFieldWindow:
             borderStyle = RC.MINE_FIELD_BORDER_BOOMED_STYLE.attr()
         elif self.isFinished():
             borderStyle = RC.MINE_FIELD_BORDER_FINISHED_STYLE.attr()
-        elif mfX == self._cursorX and mfY == self._cursorY:
+        elif self._isCursorVisible is True and mfX == self._cursorX and mfY == self._cursorY:
             borderStyle = RC.MINE_FIELD_BORDER_FOCUSED_STYLE.attr()
             ulCorner = curses.ACS_ULCORNER
             urCorner = curses.ACS_URCORNER
@@ -1109,41 +1121,55 @@ class EventLoop:
 
             elif event == ord(' '):
                 if GameControl.isMineFieldResponsive() is True:
-                    x, y = MINE_FIELD_WINDOW.getCursor()
-                    self.pokeCellOnMineField(x, y)
+                    coor = MINE_FIELD_WINDOW.getCursor()
+                    if coor is not None:
+                        x, y = coor
+                        self.pokeCellOnMineField(x, y)
 
-                GameControl.refreshDisplay()
+                        GameControl.refreshDisplay()
 
             elif event == ord('f'):
                 if GameControl.isMineFieldResponsive() is True:
-                    x, y = MINE_FIELD_WINDOW.getCursor()
-                    self.toggleCellOnMineField(x, y)
+                    coor = MINE_FIELD_WINDOW.getCursor()
+                    if coor is not None:
+                        x, y = coor
+                        self.toggleCellOnMineField(x, y)
 
-                GameControl.refreshDisplay()
+                        GameControl.refreshDisplay()
+
+            elif event == ord('c'):
+                if GameControl.isMineFieldResponsive() is True:
+                    MINE_FIELD_WINDOW.toggleCursorVisible()
+
+                    GameControl.refreshDisplay()
 
             elif event == curses.KEY_LEFT:
                 if GameControl.isMineFieldResponsive() is True:
-                    MINE_FIELD_WINDOW.translateCursor(-1, 0)
+                    if MINE_FIELD_WINDOW.isCursorVisible() is True:
+                        MINE_FIELD_WINDOW.translateCursor(-1, 0)
 
-                GameControl.refreshDisplay()
+                        GameControl.refreshDisplay()
 
             elif event == curses.KEY_RIGHT:
                 if GameControl.isMineFieldResponsive() is True:
-                    MINE_FIELD_WINDOW.translateCursor(1, 0)
+                    if MINE_FIELD_WINDOW.isCursorVisible() is True:
+                        MINE_FIELD_WINDOW.translateCursor(1, 0)
 
-                GameControl.refreshDisplay()
+                        GameControl.refreshDisplay()
 
             elif event == curses.KEY_UP:
                 if GameControl.isMineFieldResponsive() is True:
-                    MINE_FIELD_WINDOW.translateCursor(0, -1)
+                    if MINE_FIELD_WINDOW.isCursorVisible() is True:
+                        MINE_FIELD_WINDOW.translateCursor(0, -1)
 
-                GameControl.refreshDisplay()
+                        GameControl.refreshDisplay()
 
             elif event == curses.KEY_DOWN:
                 if GameControl.isMineFieldResponsive() is True:
-                    MINE_FIELD_WINDOW.translateCursor(0, 1)
+                    if MINE_FIELD_WINDOW.isCursorVisible() is True:
+                        MINE_FIELD_WINDOW.translateCursor(0, 1)
 
-                GameControl.refreshDisplay()
+                        GameControl.refreshDisplay()
 
             elif event == curses.KEY_RESIZE:
                 GameControl.resizeWindows()
