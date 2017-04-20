@@ -104,7 +104,7 @@ class RCProvider:
 
         # Status window properties
 
-        self.BUTTON_NEW_GAME = StyledText(' New Game ', curses.A_REVERSE, 'white')
+        self.BUTTON_NEW_GAME = StyledText(' NEW GAME ', curses.A_REVERSE, 'white')
         self.BUTTON_PAUSE    = StyledText('  PAUSE  ', curses.A_REVERSE, 'white')
         self.BUTTON_RESUME   = StyledText(' UNPAUSE ', curses.A_REVERSE, 'white')
         self.BUTTON_RECORDS  = StyledText(' RECORDS ', curses.A_REVERSE, 'white')
