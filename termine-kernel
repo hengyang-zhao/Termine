@@ -1,0 +1,5 @@
+#!/bin/sh
+
+TERMINE_HOME=$(builtin cd "$(dirname "$0")"; builtin pwd)
+
+exec python3 "$TERMINE_HOME/Source/REPL.py" $@
