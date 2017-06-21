@@ -737,12 +737,11 @@ class Arguments:
     def minesDensity(self):
         return self._cookedArgs.density.value()
 
+    def needsListingRecord(self):
+        return self._cookedArgs.dump_record
+
     def parse(self):
         self._cookedArgs = self._parser.parse_args()
-
-        if self._cookedArgs.dump_record is True:
-            GameControl.dumpRecord()
-            GameControl.exit()
 
 class GameControl:
 
@@ -775,6 +774,7 @@ class GameControl:
         global RECORD_WINDOW
         global TIMER
         global SHELL
+
         SHELL = Shell.Shell()
         TIMER = Timer()
         STATUS_WINDOW = StatusWindow()
@@ -788,7 +788,7 @@ class GameControl:
         try:
             with open(RC.RECORD_FILE_PATH, 'rb') as recFile:
                 recordBook = pickle.load(recFile)
-        except:
+        except Exception as e:
             recordBook = {}
 
         for title, records in recordBook.items():
@@ -1205,5 +1205,9 @@ if __name__ == '__main__':
 
     GameControl.initArguments()
     GameControl.initRC()
+
+    if ARGUMENTS.needsListingRecord() is True:
+        GameControl.dumpRecord()
+        GameControl.exit()
 
     curses.wrapper(Main)
