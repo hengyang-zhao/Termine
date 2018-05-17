@@ -128,5 +128,5 @@ class RCProvider:
         self.RECORD_DEFAULT_STYLE = Style(0, 'white')
 
         self.TERM_CWIDTH_LIMIT = 80
-        self.TERM_CHEIGHT_LIMIT = 25
+        self.TERM_CHEIGHT_LIMIT = 24
 
